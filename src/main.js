@@ -158,7 +158,7 @@ const fsm = (alphabet, states, initial, finals, map) => {
         this.states.map(state => [
           state === this.initial ? '*' : '',
           stringifyState(state),
-          hasFinalState(state) ? 'True' : 'False'
+          hasFinalState(state) ? 'true' : 'false'
         ].concat(
           this.alphabet.map(symbol =>
             stringifyState(this.follow(state, symbol))
@@ -311,7 +311,9 @@ const union = fsms =>
   Intersection.
 */
 const intersection = fsms =>
-  parallel(fsms, state => state.every(pair => pair.fsm.hasFinalState(pair.substate)))
+  parallel(fsms, state =>
+    state.length === fsms.length && state.every(pair => pair.fsm.hasFinalState(pair.substate))
+  )
 
 /**
   Given the above conditions and instructions, crawl a new unknown FSM,

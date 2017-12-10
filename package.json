@@ -1,6 +1,6 @@
 {
   "name": "green-fsm",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Finite state machines for JavaScript",
   "main": "src/main.js",
   "devDependencies": {
