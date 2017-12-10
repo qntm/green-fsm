@@ -139,6 +139,11 @@ const fsm = (alphabet, states, initial, finals, map) => {
     },
 
     toString: function () {
+      const stringifyState = state =>
+        state === oblivionState ? '' : state
+      const stringifySymbol = symbol =>
+        symbol === anythingElse ? '@@anythingElse' : symbol
+
       let rows = [
         // top row
         [
@@ -146,16 +151,18 @@ const fsm = (alphabet, states, initial, finals, map) => {
           'name',
           'final?'
         ].concat(
-          this.alphabet
+          this.alphabet.map(stringifySymbol)
         )
       ].concat(
         // other rows
         this.states.map(state => [
           state === this.initial ? '*' : '',
-          state,
+          stringifyState(state),
           hasFinalState(state) ? 'True' : 'False'
         ].concat(
-          this.alphabet.map(follow.bind(this, state))
+          this.alphabet.map(symbol =>
+            stringifyState(this.follow(state, symbol))
+          )
         ))
       )
 
