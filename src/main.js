@@ -5,10 +5,10 @@
 'use strict'
 
 // Special alphabet value
-const anythingElse = Symbol()
+const anythingElse = Symbol('anythingElse')
 
 // Special oblivion state
-const oblivionState = Symbol()
+const oblivionState = Symbol('oblivionState')
 
 /**
   A Finite State Machine or FSM has an alphabet and a set of states. At any
@@ -137,6 +137,8 @@ const fsm = (alphabet, states, initial, finals, map) => {
     _hasLiveState: function (state) {
       return state in this._getLiveStates()
     },
+
+    repr: () => 'fsm(' + [alphabet, states, initial, finals, map].map(x => JSON.stringify(x)).join(', ') + ')',
 
     toString: function () {
       const stringifyState = state =>
@@ -312,7 +314,7 @@ const union = fsms =>
 */
 const intersection = fsms =>
   parallel(fsms, state =>
-    state.length === fsms.length && state.every(pair => pair.fsm.hasFinalState(pair.substate))
+    fsms.every(fsm => state.some(pair => pair.fsm === fsm && fsm.hasFinalState(pair.substate)))
   )
 
 /**
