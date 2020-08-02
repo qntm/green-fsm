@@ -1,7 +1,12 @@
 {
   "name": "green-fsm",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Finite state machines for JavaScript",
+  "homepage": "https://github.com/qntm/green-fsm",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/qntm/green-fsm.git"
+  },
   "main": "src/main.js",
   "devDependencies": {
     "jasmine": "^2.8.0",
