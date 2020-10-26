@@ -10,7 +10,7 @@
   "main": "src/main.js",
   "devDependencies": {
     "jasmine": "^3.6.1",
-    "standard": "^14.3.4"
+    "standard": "^15.0.0"
   },
   "scripts": {
     "standard": "standard",
