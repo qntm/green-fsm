@@ -15,8 +15,12 @@
   "scripts": {
     "standard": "standard",
     "jasmine": "jasmine",
+    "postpublish": "npm version patch && git push",
     "test": "npm run jasmine **/*.spec.js"
   },
   "author": "qntm",
-  "license": "MIT"
+  "license": "MIT",
+  "files": [
+    "src"
+  ]
 }
