@@ -9,8 +9,8 @@
   },
   "main": "src/main.js",
   "devDependencies": {
-    "jasmine": "^2.8.0",
-    "standard": "^10.0.3"
+    "jasmine": "^3.6.1",
+    "standard": "^16.0.1"
   },
   "scripts": {
     "standard": "standard",
