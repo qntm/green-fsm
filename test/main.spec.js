@@ -1,22 +1,32 @@
-/* eslint-env jasmine */
+/* eslint-env mocha */
 
-'use strict'
+import assert from 'assert'
+import {
+  fsm,
+  star,
+  ANYTHING_ELSE,
+  epsilon,
+  nothing,
+  concatenate,
+  intersection,
+  union,
+  multiply,
+  _connectAll
+} from '../src/main.js'
 
-const {fsm, star, anythingElse, epsilon, nothing, concatenate, intersection, union, multiply, _connectAll} = require('../src/main.js')
-
-describe('fsm', function () {
+describe('fsm', () => {
   let a
   let b
-  beforeEach(function () {
+  beforeEach(() => {
     a = fsm(
       ['a', 'b'],
       ['0', '1', 'ob'],
       '0',
       ['1'],
       {
-        0: {a: '1', b: 'ob'},
-        1: {a: 'ob', b: 'ob'},
-        ob: {a: 'ob', b: 'ob'}
+        0: { a: '1', b: 'ob' },
+        1: { a: 'ob', b: 'ob' },
+        ob: { a: 'ob', b: 'ob' }
       }
     )
 
@@ -26,49 +36,75 @@ describe('fsm', function () {
       '0',
       ['1'],
       {
-        0: {a: 'ob', b: '1'},
-        1: {a: 'ob', b: 'ob'},
-        ob: {a: 'ob', b: 'ob'}
+        0: { a: 'ob', b: '1' },
+        1: { a: 'ob', b: 'ob' },
+        ob: { a: 'ob', b: 'ob' }
       }
     )
   })
 
-  describe('constructor', function () {
-    describe('rejects invalid inputs', function () {
-      it("rejects if initial isn't a state", function () {
-        expect(function () {
+  describe('constructor', () => {
+    describe('rejects invalid inputs', () => {
+      it('rejects if initial isn\'t a state', () => {
+        assert.throws(() => {
           fsm([], [], '1', [], {})
-        }).toThrow()
+        })
       })
 
-      it("rejects if final isn't a state", function () {
-        expect(function () {
+      it('rejects if final isn\'t a state', () => {
+        assert.throws(() => {
           fsm([], ['1'], '1', ['2'], {})
-        }).toThrow()
+        })
       })
 
-      it('rejects invalid transition', function () {
-        expect(function () {
-          fsm(['a'], ['1'], '1', [], {1: {a: '2'}})
-        }).toThrow()
+      it('rejects if alphabet has dupes', () => {
+        assert.throws(() => {
+          fsm(['a', 'a'], ['1'], '1', [], {})
+        })
+      })
+
+      it('rejects invalid transition', () => {
+        assert.throws(() => {
+          fsm(['a'], ['1'], '1', [], { 1: { a: '2' } })
+        })
       })
     })
   })
 
-  describe('accepts', function () {
-    it('a', function () {
-      expect(a.accepts([])).toBe(false)
-      expect(a.accepts(['a'])).toBe(true)
-      expect(a.accepts(['b'])).toBe(false)
+  describe('toString', () => {
+    it('works', () => {
+      assert.deepStrictEqual(a.toString(), [
+        '  name final? a  b  \n',
+        '--------------------\n',
+        '* 0    false  1  ob \n',
+        '  1    true   ob ob \n',
+        '  ob   false  ob ob \n'
+      ].join(''))
     })
 
-    it('b', function () {
-      expect(b.accepts([])).toBe(false)
-      expect(b.accepts(['a'])).toBe(false)
-      expect(b.accepts(['b'])).toBe(true)
+    it('handles ANYTHING_ELSE and OBLIVION_STATE', () => {
+      assert.deepStrictEqual(fsm([ANYTHING_ELSE], ['0'], '0', [], {}).toString(), [
+        '  name final? @@ANYTHING_ELSE \n',
+        '------------------------------\n',
+        '* 0    false                  \n'
+      ].join(''))
+    })
+  })
+
+  describe('accepts', () => {
+    it('a', () => {
+      assert.deepStrictEqual(a.accepts([]), false)
+      assert.deepStrictEqual(a.accepts(['a']), true)
+      assert.deepStrictEqual(a.accepts(['b']), false)
     })
 
-    it('advanced', function () {
+    it('b', () => {
+      assert.deepStrictEqual(b.accepts([]), false)
+      assert.deepStrictEqual(b.accepts(['a']), false)
+      assert.deepStrictEqual(b.accepts(['b']), true)
+    })
+
+    it('advanced', () => {
       // This is (a|b)*a(a|b)
       const brzozowski = fsm(
         ['a', 'b'],
@@ -76,27 +112,27 @@ describe('fsm', function () {
         'A',
         ['C', 'E'],
         {
-          A: {a: 'B', b: 'D'},
-          B: {a: 'C', b: 'E'},
-          C: {a: 'C', b: 'E'},
-          D: {a: 'B', b: 'D'},
-          E: {a: 'B', b: 'D'}
+          A: { a: 'B', b: 'D' },
+          B: { a: 'C', b: 'E' },
+          C: { a: 'C', b: 'E' },
+          D: { a: 'B', b: 'D' },
+          E: { a: 'B', b: 'D' }
         }
       )
-      expect(brzozowski.accepts(['a', 'a'])).toBe(true)
-      expect(brzozowski.accepts(['a', 'b'])).toBe(true)
-      expect(brzozowski.accepts(['a', 'a', 'b'])).toBe(true)
-      expect(brzozowski.accepts(['b', 'a', 'b'])).toBe(true)
-      expect(brzozowski.accepts(['a', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'a', 'b'])).toBe(true)
-      expect(brzozowski.accepts([])).toBe(false)
-      expect(brzozowski.accepts(['a'])).toBe(false)
-      expect(brzozowski.accepts(['b'])).toBe(false)
-      expect(brzozowski.accepts(['b', 'a'])).toBe(false)
-      expect(brzozowski.accepts(['b', 'b'])).toBe(false)
-      expect(brzozowski.accepts(['b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b'])).toBe(false)
+      assert.deepStrictEqual(brzozowski.accepts(['a', 'a']), true)
+      assert.deepStrictEqual(brzozowski.accepts(['a', 'b']), true)
+      assert.deepStrictEqual(brzozowski.accepts(['a', 'a', 'b']), true)
+      assert.deepStrictEqual(brzozowski.accepts(['b', 'a', 'b']), true)
+      assert.deepStrictEqual(brzozowski.accepts(['a', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'a', 'b']), true)
+      assert.deepStrictEqual(brzozowski.accepts([]), false)
+      assert.deepStrictEqual(brzozowski.accepts(['a']), false)
+      assert.deepStrictEqual(brzozowski.accepts(['b']), false)
+      assert.deepStrictEqual(brzozowski.accepts(['b', 'a']), false)
+      assert.deepStrictEqual(brzozowski.accepts(['b', 'b']), false)
+      assert.deepStrictEqual(brzozowski.accepts(['b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b', 'b']), false)
     })
 
-    it('binary multiples of 3', function () {
+    it('binary multiples of 3', () => {
       // Disallows the empty string
       // Allows "0" on its own, but not leading zeroes.
       const div3 = fsm(
@@ -105,434 +141,480 @@ describe('fsm', function () {
         'initial',
         ['zero', '0'],
         {
-          initial: {0: 'zero', 1: '1'},
-          zero: {0: 'oblivion', 1: 'oblivion'},
-          0: {0: '0', 1: '1'},
-          1: {0: '2', 1: '0'},
-          2: {0: '1', 1: '2'},
-          oblivion: {0: 'oblivion', 1: 'oblivion'}
+          initial: { 0: 'zero', 1: '1' },
+          zero: { 0: 'oblivion', 1: 'oblivion' },
+          0: { 0: '0', 1: '1' },
+          1: { 0: '2', 1: '0' },
+          2: { 0: '1', 1: '2' },
+          oblivion: { 0: 'oblivion', 1: 'oblivion' }
         }
       )
-      expect(div3.accepts([])).toBe(false)
-      expect(div3.accepts(['0'])).toBe(true)
-      expect(div3.accepts(['1'])).toBe(false)
-      expect(div3.accepts(['0', '0'])).toBe(false)
-      expect(div3.accepts(['0', '1'])).toBe(false)
-      expect(div3.accepts(['1', '0'])).toBe(false)
-      expect(div3.accepts(['1', '1'])).toBe(true)
-      expect(div3.accepts(['0', '0', '0'])).toBe(false)
-      expect(div3.accepts(['0', '0', '1'])).toBe(false)
-      expect(div3.accepts(['0', '1', '0'])).toBe(false)
-      expect(div3.accepts(['0', '1', '1'])).toBe(false)
-      expect(div3.accepts(['1', '0', '0'])).toBe(false)
-      expect(div3.accepts(['1', '0', '1'])).toBe(false)
-      expect(div3.accepts(['1', '1', '0'])).toBe(true)
-      expect(div3.accepts(['1', '1', '1'])).toBe(false)
-      expect(div3.accepts(['0', '0', '0', '0'])).toBe(false)
-      expect(div3.accepts(['0', '0', '0', '1'])).toBe(false)
-      expect(div3.accepts(['0', '0', '1', '0'])).toBe(false)
-      expect(div3.accepts(['0', '0', '1', '1'])).toBe(false)
-      expect(div3.accepts(['0', '1', '0', '0'])).toBe(false)
-      expect(div3.accepts(['0', '1', '0', '1'])).toBe(false)
-      expect(div3.accepts(['0', '1', '1', '0'])).toBe(false)
-      expect(div3.accepts(['0', '1', '1', '1'])).toBe(false)
-      expect(div3.accepts(['1', '0', '0', '0'])).toBe(false)
-      expect(div3.accepts(['1', '0', '0', '1'])).toBe(true)
+      assert.deepStrictEqual(div3.accepts([]), false)
+      assert.deepStrictEqual(div3.accepts(['0']), true)
+      assert.deepStrictEqual(div3.accepts(['1']), false)
+      assert.deepStrictEqual(div3.accepts(['0', '0']), false)
+      assert.deepStrictEqual(div3.accepts(['0', '1']), false)
+      assert.deepStrictEqual(div3.accepts(['1', '0']), false)
+      assert.deepStrictEqual(div3.accepts(['1', '1']), true)
+      assert.deepStrictEqual(div3.accepts(['0', '0', '0']), false)
+      assert.deepStrictEqual(div3.accepts(['0', '0', '1']), false)
+      assert.deepStrictEqual(div3.accepts(['0', '1', '0']), false)
+      assert.deepStrictEqual(div3.accepts(['0', '1', '1']), false)
+      assert.deepStrictEqual(div3.accepts(['1', '0', '0']), false)
+      assert.deepStrictEqual(div3.accepts(['1', '0', '1']), false)
+      assert.deepStrictEqual(div3.accepts(['1', '1', '0']), true)
+      assert.deepStrictEqual(div3.accepts(['1', '1', '1']), false)
+      assert.deepStrictEqual(div3.accepts(['0', '0', '0', '0']), false)
+      assert.deepStrictEqual(div3.accepts(['0', '0', '0', '1']), false)
+      assert.deepStrictEqual(div3.accepts(['0', '0', '1', '0']), false)
+      assert.deepStrictEqual(div3.accepts(['0', '0', '1', '1']), false)
+      assert.deepStrictEqual(div3.accepts(['0', '1', '0', '0']), false)
+      assert.deepStrictEqual(div3.accepts(['0', '1', '0', '1']), false)
+      assert.deepStrictEqual(div3.accepts(['0', '1', '1', '0']), false)
+      assert.deepStrictEqual(div3.accepts(['0', '1', '1', '1']), false)
+      assert.deepStrictEqual(div3.accepts(['1', '0', '0', '0']), false)
+      assert.deepStrictEqual(div3.accepts(['1', '0', '0', '1']), true)
     })
 
-    it('accepts anything else', function () {
-      expect(fsm(
-        ['a', 'b', 'c', anythingElse],
+    it('accepts anything else', () => {
+      assert.deepStrictEqual(fsm(
+        ['a', 'b', 'c', ANYTHING_ELSE],
         ['1'],
         '1',
         ['1'],
         {
-          1: {a: '1', b: '1', c: '1', [anythingElse]: '1'}
+          1: { a: '1', b: '1', c: '1', [ANYTHING_ELSE]: '1' }
         }
-      ).accepts(['d'])).toBe(true)
+      ).accepts(['d']), true)
     })
 
-    it('nothing', function () {
-      expect(nothing(['a']).accepts([])).toBe(false)
-      expect(nothing(['a']).accepts(['a'])).toBe(false)
+    it('nothing', () => {
+      assert.deepStrictEqual(nothing(['a']).accepts([]), false)
+      assert.deepStrictEqual(nothing(['a']).accepts(['a']), false)
     })
 
-    it('epsilon', function () {
-      expect(epsilon(['a']).accepts([])).toBe(true)
-      expect(epsilon(['a']).accepts(['a'])).toBe(false)
+    it('epsilon', () => {
+      assert.deepStrictEqual(epsilon(['a']).accepts([]), true)
+      assert.deepStrictEqual(epsilon(['a']).accepts(['a']), false)
     })
   })
 
-  describe('strings', function () {
-    it('blockquote', function () {
+  describe('strings', () => {
+    it('blockquote', () => {
       const blockquote = fsm(
-        ['/', '*', anythingElse],
+        ['/', '*', ANYTHING_ELSE],
         ['0', '1', '2', '3', '4', '5'],
         '0',
         ['4'],
         {
-          0: {'/': '1'},
-          1: {'*': '2'},
-          2: {'/': '2', [anythingElse]: '2', '*': '3'},
-          3: {'/': '4', [anythingElse]: '2', '*': '3'}
+          0: { '/': '1' },
+          1: { '*': '2' },
+          2: { '/': '2', [ANYTHING_ELSE]: '2', '*': '3' },
+          3: { '/': '4', [ANYTHING_ELSE]: '2', '*': '3' }
         }
       )
-      expect(blockquote.accepts(['/', '*', 'whatever', '*', '/'])).toBe(true)
-      expect(blockquote.accepts(['*', '*', 'whatever', '*', '/'])).toBe(false)
+      assert.deepStrictEqual(blockquote.accepts(['/', '*', 'whatever', '*', '/']), true)
+      assert.deepStrictEqual(blockquote.accepts(['*', '*', 'whatever', '*', '/']), false)
       const gen = blockquote.strings()
-      expect(gen.next().value).toEqual(['/', '*', '*', '/'])
+      assert.deepStrictEqual(gen.next().value, ['/', '*', '*', '/'])
     })
 
-    it('nothing', function () {
+    it('nothing', () => {
       const gen = nothing(['a', 'b']).strings()
-      expect(gen.next().done).toBe(true)
+      assert.deepStrictEqual(gen.next().done, true)
     })
 
-    it('epsilon', function () {
+    it('epsilon', () => {
       const gen = epsilon(['a', 'b']).strings()
-      expect(gen.next().value).toEqual([])
-      expect(gen.next().done).toBe(true)
+      assert.deepStrictEqual(gen.next().value, [])
+      assert.deepStrictEqual(gen.next().done, true)
     })
 
-    it('epsilon over an empty alphabet', function () {
+    it('epsilon over an empty alphabet', () => {
       const gen = epsilon([]).strings()
-      expect(gen.next().value).toEqual([])
-      expect(gen.next().done).toBe(true)
+      assert.deepStrictEqual(gen.next().value, [])
+      assert.deepStrictEqual(gen.next().done, true)
     })
 
-    it('A', function () {
+    it('A', () => {
       const gen = a.strings()
-      expect(gen.next().value).toEqual(['a'])
-      expect(gen.next().done).toBe(true)
+      assert.deepStrictEqual(gen.next().value, ['a'])
+      assert.deepStrictEqual(gen.next().done, true)
     })
 
-    it('AAA', function () {
+    it('AAA', () => {
       const gen = concatenate([a, a, a]).strings()
-      expect(gen.next().value).toEqual(['a', 'a', 'a'])
-      expect(gen.next().done).toBe(true)
+      assert.deepStrictEqual(gen.next().value, ['a', 'a', 'a'])
+      assert.deepStrictEqual(gen.next().done, true)
     })
 
-    it('BAB', function () {
+    it('BAB', () => {
       const gen = concatenate([b, a, b]).strings()
-      expect(gen.next().value).toEqual(['b', 'a', 'b'])
-      expect(gen.next().done).toBe(true)
+      assert.deepStrictEqual(gen.next().value, ['b', 'a', 'b'])
+      assert.deepStrictEqual(gen.next().done, true)
     })
   })
 
-  describe('_connectAll', function () {
-    it('works', function () {
+  describe('_connectAll', () => {
+    it('works', () => {
       const empty = epsilon(['a'])
-      expect(_connectAll([empty], 0, empty.initial)).toEqual([
-        {i: 0, substate: empty.initial}
+      assert.deepStrictEqual(_connectAll([empty], 0, empty.initial), [
+        { i: 0, substate: empty.initial }
       ])
     })
 
-    it('works A', function () {
-      expect(_connectAll([a], 0, a.initial)).toEqual([
-        {i: 0, substate: a.initial}
+    it('works A', () => {
+      assert.deepStrictEqual(_connectAll([a], 0, a.initial), [
+        { i: 0, substate: a.initial }
       ])
     })
 
     it('works too', () => {
       const empty = epsilon(['a'])
-      expect(_connectAll([empty, a], 0, empty.initial)).toEqual([
-        {i: 0, substate: empty.initial},
-        {i: 1, substate: a.initial}
+      assert.deepStrictEqual(_connectAll([empty, a], 0, empty.initial), [
+        { i: 0, substate: empty.initial },
+        { i: 1, substate: a.initial }
       ])
     })
 
     it('works three', () => {
       const empty = epsilon(['a'])
-      expect(_connectAll([empty, empty, a], 0, empty.initial)).toEqual([
-        {i: 0, substate: empty.initial},
-        {i: 1, substate: empty.initial},
-        {i: 2, substate: a.initial}
+      assert.deepStrictEqual(_connectAll([empty, empty, a], 0, empty.initial), [
+        { i: 0, substate: empty.initial },
+        { i: 1, substate: empty.initial },
+        { i: 2, substate: a.initial }
       ])
     })
   })
 
-  describe('_getLiveStates', function () {
-    it('works', function () {
-      expect(a._getLiveStates()).toEqual({0: true, 1: true})
+  describe('_getLiveStates', () => {
+    it('works', () => {
+      assert.deepStrictEqual(a._getLiveStates(), { 0: true, 1: true })
     })
   })
 
-  describe('concatenate', function () {
-    it('A and A', function () {
+  describe('concatenate', () => {
+    it('A and A', () => {
       const concAA = concatenate([a, a])
-      expect(concAA.accepts([])).toBe(false)
-      expect(concAA.accepts(['a'])).toBe(false)
-      expect(concAA.accepts(['a', 'a'])).toBe(true)
-      expect(concAA.accepts(['a', 'a', 'a'])).toBe(false)
+      assert.deepStrictEqual(concAA.accepts([]), false)
+      assert.deepStrictEqual(concAA.accepts(['a']), false)
+      assert.deepStrictEqual(concAA.accepts(['a', 'a']), true)
+      assert.deepStrictEqual(concAA.accepts(['a', 'a', 'a']), false)
     })
 
-    it('epsilon, A and A', function () {
+    it('epsilon, A and A', () => {
       const concAA2 = concatenate([epsilon(['a', 'b']), a, a])
-      expect(concAA2.accepts([])).toBe(false)
-      expect(concAA2.accepts(['a'])).toBe(false)
-      expect(concAA2.accepts(['a', 'a'])).toBe(true)
-      expect(concAA2.accepts(['a', 'a', 'a'])).toBe(false)
+      assert.deepStrictEqual(concAA2.accepts([]), false)
+      assert.deepStrictEqual(concAA2.accepts(['a']), false)
+      assert.deepStrictEqual(concAA2.accepts(['a', 'a']), true)
+      assert.deepStrictEqual(concAA2.accepts(['a', 'a', 'a']), false)
     })
 
-    it('A and B', function () {
+    it('A and B', () => {
       const concAB = concatenate([a, b])
-      expect(concAB.accepts([])).toBe(false)
-      expect(concAB.accepts(['a'])).toBe(false)
-      expect(concAB.accepts(['b'])).toBe(false)
-      expect(concAB.accepts(['a', 'a'])).toBe(false)
-      expect(concAB.accepts(['a', 'b'])).toBe(true)
-      expect(concAB.accepts(['b', 'a'])).toBe(false)
-      expect(concAB.accepts(['b', 'b'])).toBe(false)
+      assert.deepStrictEqual(concAB.accepts([]), false)
+      assert.deepStrictEqual(concAB.accepts(['a']), false)
+      assert.deepStrictEqual(concAB.accepts(['b']), false)
+      assert.deepStrictEqual(concAB.accepts(['a', 'a']), false)
+      assert.deepStrictEqual(concAB.accepts(['a', 'b']), true)
+      assert.deepStrictEqual(concAB.accepts(['b', 'a']), false)
+      assert.deepStrictEqual(concAB.accepts(['b', 'b']), false)
     })
 
-    it('unifies alphabets properly', function () {
+    it('unifies alphabets properly', () => {
       // Thanks to sparse maps it should now be possible to compute the union of FSMs
       // with disagreeing alphabets!
-      const a = fsm(['a'], ['0', '1'], '0', ['1'], {0: {a: '1'}})
-      const b = fsm(['b'], ['0', '1'], '0', ['1'], {0: {b: '1'}})
-      expect(concatenate([a, b]).accepts(['a', 'b'])).toBe(true)
+      const a = fsm(['a'], ['0', '1'], '0', ['1'], { 0: { a: '1' } })
+      const b = fsm(['b'], ['0', '1'], '0', ['1'], { 0: { b: '1' } })
+      assert.deepStrictEqual(concatenate([a, b]).accepts(['a', 'b']), true)
     })
 
-    it('defect', function () {
+    it('defect', () => {
       // This exposes a defect in concatenate.
-      expect(concatenate([a, epsilon(['a', 'b']), a]).accepts(['a', 'a'])).toBe(true)
-      expect(concatenate([a, epsilon(['a']), a]).accepts(['a', 'a'])).toBe(true)
-      expect(concatenate([a, epsilon(['a', 'b']), epsilon(['a', 'b']), a]).accepts(['a', 'a'])).toBe(true)
-      expect(concatenate([a, epsilon(['a']), epsilon(['a']), a]).accepts(['a', 'a'])).toBe(true)
+      assert.deepStrictEqual(concatenate([a, epsilon(['a', 'b']), a]).accepts(['a', 'a']), true)
+      assert.deepStrictEqual(concatenate([a, epsilon(['a']), a]).accepts(['a', 'a']), true)
+      assert.deepStrictEqual(concatenate([a, epsilon(['a', 'b']), epsilon(['a', 'b']), a]).accepts(['a', 'a']), true)
+      assert.deepStrictEqual(concatenate([a, epsilon(['a']), epsilon(['a']), a]).accepts(['a', 'a']), true)
     })
 
     // Odd bug with concatenate(), exposed by "[bc]*c"
-    describe('odd bug', function () {
+    describe('odd bug', () => {
       let int5A
       let int5B
-      beforeEach(function () {
+      beforeEach(() => {
         int5A = fsm(
-          ['a', 'b', 'c', anythingElse],
+          ['a', 'b', 'c', ANYTHING_ELSE],
           ['0', '1'],
           '1',
           ['1'],
           {
-            0: {[anythingElse]: '0', 'a': '0', 'b': '0', 'c': '0'},
-            1: {[anythingElse]: '0', 'a': '0', 'b': '1', 'c': '1'}
+            0: { [ANYTHING_ELSE]: '0', a: '0', b: '0', c: '0' },
+            1: { [ANYTHING_ELSE]: '0', a: '0', b: '1', c: '1' }
           }
         )
 
         int5B = fsm(
-          ['a', 'b', 'c', anythingElse],
+          ['a', 'b', 'c', ANYTHING_ELSE],
           ['0', '1', '2'],
           '1',
           ['0'],
           {
-            0: {[anythingElse]: '2', a: '2', b: '2', c: '2'},
-            1: {[anythingElse]: '2', a: '2', b: '2', c: '0'},
-            2: {[anythingElse]: '2', a: '2', b: '2', c: '2'}
+            0: { [ANYTHING_ELSE]: '2', a: '2', b: '2', c: '2' },
+            1: { [ANYTHING_ELSE]: '2', a: '2', b: '2', c: '0' },
+            2: { [ANYTHING_ELSE]: '2', a: '2', b: '2', c: '2' }
           }
         )
       })
 
-      it('int5A works', function () {
-        expect(int5A.accepts([])).toBe(true)
+      it('int5A works', () => {
+        assert.deepStrictEqual(int5A.accepts([]), true)
       })
 
-      it('int5B works', function () {
-        expect(int5B.accepts(['c'])).toBe(true)
+      it('int5B works', () => {
+        assert.deepStrictEqual(int5B.accepts(['c']), true)
       })
 
-      it('int5C works', function () {
+      it('int5C works', () => {
         const int5C = concatenate([int5A, int5B])
-        expect(int5C.accepts(['c'])).toBe(true)
+        assert.deepStrictEqual(int5C.accepts(['c']), true)
       })
     })
 
-    it('should not create new oblivion states', function () {
+    it('should not create new oblivion states', () => {
       const abc = fsm(
         ['a', 'b', 'c'],
         ['0', '1', '2', '3'],
         '0',
         ['3'],
         {
-          0: {a: '1'},
-          1: {b: '2'},
-          2: {c: '3'}
+          0: { a: '1' },
+          1: { b: '2' },
+          2: { c: '3' }
         }
       )
-      expect(abc.states.length).toBe(4)
-      expect(concatenate([abc, abc]).states.length).toBe(7)
+      assert.deepStrictEqual(abc.states.length, 4)
+      assert.deepStrictEqual(concatenate([abc, abc]).states.length, 7)
     })
   })
 
-  describe('union', function () {
-    it('A or B', function () {
+  describe('union', () => {
+    it('A or B', () => {
       const aorb = union([a, b])
-      expect(aorb.accepts([])).toBe(false)
-      expect(aorb.accepts(['a'])).toBe(true)
-      expect(aorb.accepts(['b'])).toBe(true)
-      expect(aorb.accepts(['a', 'a'])).toBe(false)
-      expect(aorb.accepts(['a', 'b'])).toBe(false)
-      expect(aorb.accepts(['b', 'a'])).toBe(false)
-      expect(aorb.accepts(['b', 'b'])).toBe(false)
+      assert.deepStrictEqual(aorb.accepts([]), false)
+      assert.deepStrictEqual(aorb.accepts(['a']), true)
+      assert.deepStrictEqual(aorb.accepts(['b']), true)
+      assert.deepStrictEqual(aorb.accepts(['a', 'a']), false)
+      assert.deepStrictEqual(aorb.accepts(['a', 'b']), false)
+      assert.deepStrictEqual(aorb.accepts(['b', 'a']), false)
+      assert.deepStrictEqual(aorb.accepts(['b', 'b']), false)
     })
 
-    it('epsilon or A', function () {
+    it('epsilon or A', () => {
       const eora = union([epsilon(['a']), a])
-      expect(eora.accepts([])).toBe(true)
-      expect(eora.accepts(['a'])).toBe(true)
-      expect(eora.accepts(['b'])).toBe(false)
-      expect(eora.accepts(['a', 'a'])).toBe(false)
-      expect(eora.accepts(['a', 'b'])).toBe(false)
-      expect(eora.accepts(['b', 'a'])).toBe(false)
-      expect(eora.accepts(['b', 'b'])).toBe(false)
+      assert.deepStrictEqual(eora.accepts([]), true)
+      assert.deepStrictEqual(eora.accepts(['a']), true)
+      assert.deepStrictEqual(eora.accepts(['b']), false)
+      assert.deepStrictEqual(eora.accepts(['a', 'a']), false)
+      assert.deepStrictEqual(eora.accepts(['a', 'b']), false)
+      assert.deepStrictEqual(eora.accepts(['b', 'a']), false)
+      assert.deepStrictEqual(eora.accepts(['b', 'b']), false)
     })
 
-    it('A or nothing', function () {
+    it('A or nothing', () => {
       const aornothing = union([a, nothing(['a', 'b'])])
-      expect(aornothing.accepts([])).toBe(false)
-      expect(aornothing.accepts(['a'])).toBe(true)
+      assert.deepStrictEqual(aornothing.accepts([]), false)
+      assert.deepStrictEqual(aornothing.accepts(['a']), true)
     })
 
-    it('unifies alphabets properly', function () {
+    it('unifies alphabets properly', () => {
       // Thanks to sparse maps it should now be possible to compute the union of FSMs
       // with disagreeing alphabets!
-      const a = fsm(['a'], ['0', '1'], '0', ['1'], {0: {a: '1'}})
-      const b = fsm(['b'], ['0', '1'], '0', ['1'], {0: {b: '1'}})
-      expect(union([a, b]).accepts(['a'])).toBe(true)
-      expect(union([a, b]).accepts(['b'])).toBe(true)
+      const a = fsm(['a'], ['0', '1'], '0', ['1'], { 0: { a: '1' } })
+      const b = fsm(['b'], ['0', '1'], '0', ['1'], { 0: { b: '1' } })
+      assert.deepStrictEqual(union([a, b]).accepts(['a']), true)
+      assert.deepStrictEqual(union([a, b]).accepts(['b']), true)
     })
 
-    it('should not create new oblivion states', function () {
+    it('should not create new oblivion states', () => {
       const abc = fsm(
         ['a', 'b', 'c'],
         ['0', '1', '2', '3'],
         '0',
         ['3'],
         {
-          0: {a: '1'},
-          1: {b: '2'},
-          2: {c: '3'}
+          0: { a: '1' },
+          1: { b: '2' },
+          2: { c: '3' }
         }
       )
-      expect(union([abc, abc]).states.length).toBe(4)
+      assert.deepStrictEqual(union([abc, abc]).states.length, 4)
     })
   })
 
   describe('intersection', () => {
     it('works', () => {
       const astar = star(a)
-      expect(astar.accepts([])).toBe(true)
-      expect(astar.accepts(['a'])).toBe(true)
-      expect(astar.accepts(['b'])).toBe(false)
+      assert.deepStrictEqual(astar.accepts([]), true)
+      assert.deepStrictEqual(astar.accepts(['a']), true)
+      assert.deepStrictEqual(astar.accepts(['b']), false)
 
       const bstar = star(b)
-      expect(bstar.accepts([])).toBe(true)
-      expect(bstar.accepts(['a'])).toBe(false)
-      expect(bstar.accepts(['b'])).toBe(true)
+      assert.deepStrictEqual(bstar.accepts([]), true)
+      assert.deepStrictEqual(bstar.accepts(['a']), false)
+      assert.deepStrictEqual(bstar.accepts(['b']), true)
 
       const both = intersection([astar, bstar])
-      expect(both.accepts([])).toBe(true)
-      expect(both.accepts(['a'])).toBe(false)
-      expect(both.accepts(['b'])).toBe(false)
-      expect(() => both.accepts([anythingElse])).toThrowError()
+      assert.deepStrictEqual(both.accepts([]), true)
+      assert.deepStrictEqual(both.accepts(['a']), false)
+      assert.deepStrictEqual(both.accepts(['b']), false)
+      assert.throws(() => both.accepts([ANYTHING_ELSE]))
     })
 
     it('strange bug', () => {
       const abcdotdotdot = fsm(
-        ['a', 'b', 'c', 'd', 'e', 'f', anythingElse],
+        ['a', 'b', 'c', 'd', 'e', 'f', ANYTHING_ELSE],
         ['0', '1', '2', '3', '4', '5', '6'],
         '0',
         ['6'],
         {
-          '0': { a: '1' },
-          '1': { b: '2' },
-          '2': { c: '3' },
-          '3': { a: '4', b: '4', c: '4', d: '4', e: '4', f: '4', [anythingElse]: '4' },
-          '4': { a: '5', b: '5', c: '5', d: '5', e: '5', f: '5', [anythingElse]: '5' },
-          '5': { a: '6', b: '6', c: '6', d: '6', e: '6', f: '6', [anythingElse]: '6' },
-          '6': {}
+          0: { a: '1' },
+          1: { b: '2' },
+          2: { c: '3' },
+          3: { a: '4', b: '4', c: '4', d: '4', e: '4', f: '4', [ANYTHING_ELSE]: '4' },
+          4: { a: '5', b: '5', c: '5', d: '5', e: '5', f: '5', [ANYTHING_ELSE]: '5' },
+          5: { a: '6', b: '6', c: '6', d: '6', e: '6', f: '6', [ANYTHING_ELSE]: '6' },
+          6: {}
         }
       )
 
       const dotdotdotdef = fsm(
-        ['a', 'b', 'c', 'd', 'e', 'f', anythingElse],
+        ['a', 'b', 'c', 'd', 'e', 'f', ANYTHING_ELSE],
         ['0', '1', '2', '3', '4', '5', '6'],
         '0',
         ['6'],
         {
-          '0': { a: '1', b: '1', c: '1', d: '1', e: '1', f: '1', [anythingElse]: '1' },
-          '1': { a: '2', b: '2', c: '2', d: '2', e: '2', f: '2', [anythingElse]: '2' },
-          '2': { a: '3', b: '3', c: '3', d: '3', e: '3', f: '3', [anythingElse]: '3' },
-          '3': { d: '4' },
-          '4': { e: '5' },
-          '5': { f: '6' },
-          '6': {}
+          0: { a: '1', b: '1', c: '1', d: '1', e: '1', f: '1', [ANYTHING_ELSE]: '1' },
+          1: { a: '2', b: '2', c: '2', d: '2', e: '2', f: '2', [ANYTHING_ELSE]: '2' },
+          2: { a: '3', b: '3', c: '3', d: '3', e: '3', f: '3', [ANYTHING_ELSE]: '3' },
+          3: { d: '4' },
+          4: { e: '5' },
+          5: { f: '6' },
+          6: {}
         }
       )
       const abcdef = intersection([abcdotdotdot, dotdotdotdef])
-      expect(abcdef.accepts(['b', 'b', 'c', 'd', 'e', 'f'])).toBe(false)
+      assert.deepStrictEqual(abcdef.accepts(['b', 'b', 'c', 'd', 'e', 'f']), false)
     })
 
     it('stranger bug minus 1', () => {
       // /[01][01]00-00-00/ and /00.*/
-      const yyyymmdd = fsm(["0","1","-",anythingElse], ["0","1","2","3","4","5","6","7","8","9","10"], "0", ["10"], {"0":{"0":"1","1":"1"},"1":{"0":"2","1":"2"},"2":{"0":"3"},"3":{"0":"4"},"4":{"-":"5"},"5":{"0":"6"},"6":{"0":"7"},"7":{"-":"8"},"8":{"0":"9"},"9":{"0":"10"},"10":{}})
+      const yyyymmdd = fsm(
+        ['0', '1', '-', ANYTHING_ELSE],
+        ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+        '0',
+        ['10'],
+        {
+          0: { 0: '1', 1: '1' },
+          1: { 0: '2', 1: '2' },
+          2: { 0: '3' },
+          3: { 0: '4' },
+          4: { '-': '5' },
+          5: { 0: '6' },
+          6: { 0: '7' },
+          7: { '-': '8' },
+          8: { 0: '9' },
+          9: { 0: '10' },
+          10: {}
+        }
+      )
 
-      const nineteen = fsm(["0","1","-",anythingElse], ["0","1","2","3"], "0", ["2","3"], {"0":{"0":"1"},"1":{"0":"2"},"2":{"0":"3","1":"3","-":"3"},"3":{"0":"3","1":"3","-":"3"}})
+      const nineteen = fsm(
+        ['0', '1', '-', ANYTHING_ELSE],
+        ['0', '1', '2', '3'],
+        '0',
+        ['2', '3'],
+        {
+          0: { 0: '1' },
+          1: { 0: '2' },
+          2: { 0: '3', 1: '3', '-': '3' },
+          3: { 0: '3', 1: '3', '-': '3' }
+        }
+      )
 
-      expect(intersection([yyyymmdd, nineteen]).accepts(['0', '0', '0', '0', '-', '0', '0', '-', '0', '0'])).toBe(true)
+      assert.deepStrictEqual(intersection([yyyymmdd, nineteen]).accepts(['0', '0', '0', '0', '-', '0', '0', '-', '0', '0']), true)
     })
 
     it('stranger bug', () => {
       // /\d\d\d\d-\d\d-\d\d/ and /19.*/
       const yyyymmdd = fsm(
-        ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', anythingElse],
+        ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', ANYTHING_ELSE],
         ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
         '0',
         ['10'],
-        {'0': {'0': '1', '1': '1', '2': '1', '3': '1', '4': '1', '5': '1', '6': '1', '7': '1', '8': '1', '9': '1'}, '1': {'0': '2', '1': '2', '2': '2', '3': '2', '4': '2', '5': '2', '6': '2', '7': '2', '8': '2', '9': '2'}, '2': {'0': '3', '1': '3', '2': '3', '3': '3', '4': '3', '5': '3', '6': '3', '7': '3', '8': '3', '9': '3'}, '3': {'0': '4', '1': '4', '2': '4', '3': '4', '4': '4', '5': '4', '6': '4', '7': '4', '8': '4', '9': '4'}, '4': {'-': '5'}, '5': {'0': '6', '1': '6', '2': '6', '3': '6', '4': '6', '5': '6', '6': '6', '7': '6', '8': '6', '9': '6'}, '6': {'0': '7', '1': '7', '2': '7', '3': '7', '4': '7', '5': '7', '6': '7', '7': '7', '8': '7', '9': '7'}, '7': {'-': '8'}, '8': {'0': '9', '1': '9', '2': '9', '3': '9', '4': '9', '5': '9', '6': '9', '7': '9', '8': '9', '9': '9'}, '9': {'0': '10', '1': '10', '2': '10', '3': '10', '4': '10', '5': '10', '6': '10', '7': '10', '8': '10', '9': '10'}, '10': {}}
+        {
+          0: { 0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1', 6: '1', 7: '1', 8: '1', 9: '1' },
+          1: { 0: '2', 1: '2', 2: '2', 3: '2', 4: '2', 5: '2', 6: '2', 7: '2', 8: '2', 9: '2' },
+          2: { 0: '3', 1: '3', 2: '3', 3: '3', 4: '3', 5: '3', 6: '3', 7: '3', 8: '3', 9: '3' },
+          3: { 0: '4', 1: '4', 2: '4', 3: '4', 4: '4', 5: '4', 6: '4', 7: '4', 8: '4', 9: '4' },
+          4: { '-': '5' },
+          5: { 0: '6', 1: '6', 2: '6', 3: '6', 4: '6', 5: '6', 6: '6', 7: '6', 8: '6', 9: '6' },
+          6: { 0: '7', 1: '7', 2: '7', 3: '7', 4: '7', 5: '7', 6: '7', 7: '7', 8: '7', 9: '7' },
+          7: { '-': '8' },
+          8: { 0: '9', 1: '9', 2: '9', 3: '9', 4: '9', 5: '9', 6: '9', 7: '9', 8: '9', 9: '9' },
+          9: { 0: '10', 1: '10', 2: '10', 3: '10', 4: '10', 5: '10', 6: '10', 7: '10', 8: '10', 9: '10' },
+          10: {}
+        }
       )
 
       const nineteen = fsm(
-        ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', anythingElse],
+        ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', ANYTHING_ELSE],
         ['0', '1', '2', '3'],
         '0',
         ['2', '3'],
-        {'0': {'1': '1'}, '1': {'9': '2'}, '2': {'0': '3', '1': '3', '2': '3', '3': '3', '4': '3', '5': '3', '6': '3', '7': '3', '8': '3', '9': '3', '-': '3'}, '3': {'0': '3', '1': '3', '2': '3', '3': '3', '4': '3', '5': '3', '6': '3', '7': '3', '8': '3', '9': '3', '-': '3'}}
+        {
+          0: { 1: '1' },
+          1: { 9: '2' },
+          2: { 0: '3', 1: '3', 2: '3', 3: '3', 4: '3', 5: '3', 6: '3', 7: '3', 8: '3', 9: '3', '-': '3' },
+          3: { 0: '3', 1: '3', 2: '3', 3: '3', 4: '3', 5: '3', 6: '3', 7: '3', 8: '3', 9: '3', '-': '3' }
+        }
       )
 
-      expect(intersection([yyyymmdd, nineteen]).accepts(['1', '9', '9', '-', '9', '9', '-', '9', '9'])).toBe(false)
-      expect(intersection([yyyymmdd, nineteen]).accepts(['1', '9', '9', '9', '-', '9', '9', '-', '9', '9'])).toBe(true)
+      assert.deepStrictEqual(intersection([yyyymmdd, nineteen]).accepts(['1', '9', '9', '-', '9', '9', '-', '9', '9']), false)
+      assert.deepStrictEqual(intersection([yyyymmdd, nineteen]).accepts(['1', '9', '9', '9', '-', '9', '9', '-', '9', '9']), true)
     })
   })
 
-  describe('anythingElse', () => {
+  describe('ANYTHING_ELSE', () => {
     it('works', () => {
       const any = fsm(
-        [anythingElse],
+        [ANYTHING_ELSE],
         ['0', '1'],
         '0',
         ['1'],
         {
-          0: {[anythingElse]: '1'}
+          0: { [ANYTHING_ELSE]: '1' }
         }
       )
-      expect(any.accepts([])).toBe(false)
-      expect(any.accepts(['a'])).toBe(true)
-      expect(any.accepts(['b'])).toBe(true)
-      expect(any.accepts([7453])).toBe(true)
-      expect(any.accepts([anythingElse])).toBe(true)
-      expect(any.accepts(['a', 'a'])).toBe(false)
-      expect(any.accepts([anythingElse, anythingElse])).toBe(false)
+      assert.deepStrictEqual(any.accepts([]), false)
+      assert.deepStrictEqual(any.accepts(['a']), true)
+      assert.deepStrictEqual(any.accepts(['b']), true)
+      assert.deepStrictEqual(any.accepts([7453]), true)
+      assert.deepStrictEqual(any.accepts([ANYTHING_ELSE]), true)
+      assert.deepStrictEqual(any.accepts(['a', 'a']), false)
+      assert.deepStrictEqual(any.accepts([ANYTHING_ELSE, ANYTHING_ELSE]), false)
     })
   })
 
-  describe('star', function () {
-    it('works', function () {
+  describe('star', () => {
+    it('works', () => {
       const starA = star(a)
-      expect(starA.accepts([])).toBe(true)
-      expect(starA.accepts(['a'])).toBe(true)
-      expect(starA.accepts(['b'])).toBe(false)
-      expect(starA.accepts(['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'])).toBe(true)
+      assert.deepStrictEqual(starA.accepts([]), true)
+      assert.deepStrictEqual(starA.accepts(['a']), true)
+      assert.deepStrictEqual(starA.accepts(['b']), false)
+      assert.deepStrictEqual(starA.accepts(['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a']), true)
     })
 
-    it('bug 28', function () {
+    it('bug 28', () => {
       // This is ab*
       const abstar = fsm(
         ['a', 'b'],
@@ -540,24 +622,24 @@ describe('fsm', function () {
         '0',
         ['1'],
         {
-          0: {a: '1'},
-          1: {b: '1'}
+          0: { a: '1' },
+          1: { b: '1' }
         }
       )
-      expect(abstar.accepts(['a'])).toBe(true)
-      expect(abstar.accepts(['b'])).toBe(false)
-      expect(abstar.accepts(['a', 'b'])).toBe(true)
-      expect(abstar.accepts(['a', 'b', 'b'])).toBe(true)
+      assert.deepStrictEqual(abstar.accepts(['a']), true)
+      assert.deepStrictEqual(abstar.accepts(['b']), false)
+      assert.deepStrictEqual(abstar.accepts(['a', 'b']), true)
+      assert.deepStrictEqual(abstar.accepts(['a', 'b', 'b']), true)
 
       // This is (ab*)* and it caused some defects.
       const abstarstar = star(abstar)
-      expect(abstarstar.accepts(['a'])).toBe(true)
-      expect(abstarstar.accepts(['b'])).toBe(false)
-      expect(abstarstar.accepts(['a', 'b'])).toBe(true)
-      expect(abstarstar.accepts(['b', 'b'])).toBe(false)
+      assert.deepStrictEqual(abstarstar.accepts(['a']), true)
+      assert.deepStrictEqual(abstarstar.accepts(['b']), false)
+      assert.deepStrictEqual(abstarstar.accepts(['a', 'b']), true)
+      assert.deepStrictEqual(abstarstar.accepts(['b', 'b']), false)
     })
 
-    it('advanced', function () {
+    it('advanced', () => {
       // This is (a*ba)*. Naively connecting the final states to the initial state
       // gives the incorrect result here.
       const starred = star(fsm(
@@ -566,112 +648,112 @@ describe('fsm', function () {
         '0',
         ['2'],
         {
-          0: {a: '0', b: '1'},
-          1: {a: '2', b: 'oblivion'},
-          2: {a: 'oblivion', b: 'oblivion'},
-          oblivion: {a: 'oblivion', b: 'oblivion'}
+          0: { a: '0', b: '1' },
+          1: { a: '2', b: 'oblivion' },
+          2: { a: 'oblivion', b: 'oblivion' },
+          oblivion: { a: 'oblivion', b: 'oblivion' }
         }
       ))
-      expect(starred.alphabet).toEqual(['a', 'b'])
-      expect(starred.accepts([])).toBe(true)
-      expect(starred.accepts(['a'])).toBe(false)
-      expect(starred.accepts(['b'])).toBe(false)
-      expect(starred.accepts(['a', 'a'])).toBe(false)
-      expect(starred.accepts(['b', 'a'])).toBe(true)
-      expect(starred.accepts(['a', 'b', 'a'])).toBe(true)
-      expect(starred.accepts(['a', 'a', 'b', 'a'])).toBe(true)
-      expect(starred.accepts(['a', 'a', 'b', 'b'])).toBe(false)
-      expect(starred.accepts(['a', 'b', 'a', 'b', 'a', 'b', 'a'])).toBe(true)
+      assert.deepStrictEqual(starred.alphabet, ['a', 'b'])
+      assert.deepStrictEqual(starred.accepts([]), true)
+      assert.deepStrictEqual(starred.accepts(['a']), false)
+      assert.deepStrictEqual(starred.accepts(['b']), false)
+      assert.deepStrictEqual(starred.accepts(['a', 'a']), false)
+      assert.deepStrictEqual(starred.accepts(['b', 'a']), true)
+      assert.deepStrictEqual(starred.accepts(['a', 'b', 'a']), true)
+      assert.deepStrictEqual(starred.accepts(['a', 'a', 'b', 'a']), true)
+      assert.deepStrictEqual(starred.accepts(['a', 'a', 'b', 'b']), false)
+      assert.deepStrictEqual(starred.accepts(['a', 'b', 'a', 'b', 'a', 'b', 'a']), true)
     })
 
-    it('should not create new oblivion states', function () {
+    it('should not create new oblivion states', () => {
       const abc = fsm(
         ['a', 'b', 'c'],
         ['0', '1', '2', '3'],
         '0',
         ['3'],
         {
-          0: {a: '1'},
-          1: {b: '2'},
-          2: {c: '3'}
+          0: { a: '1' },
+          1: { b: '2' },
+          2: { c: '3' }
         }
       )
-      expect(star(abc).states.length).toBe(4)
+      assert.deepStrictEqual(star(abc).states.length, 4)
     })
   })
 
-  describe('multiply', function () {
-    it('rejects bad multipliers', function () {
-      expect(function () {
+  describe('multiply', () => {
+    it('rejects bad multipliers', () => {
+      assert.throws(() => {
         multiply(a, -1)
-      }).toThrow()
+      })
     })
 
-    it('A by 0', function () {
+    it('A by 0', () => {
       const zeroA = multiply(a, 0)
-      expect(zeroA.accepts([])).toBe(true)
-      expect(zeroA.accepts(['a'])).toBe(false)
+      assert.deepStrictEqual(zeroA.accepts([]), true)
+      assert.deepStrictEqual(zeroA.accepts(['a']), false)
     })
 
-    it('A by 1', function () {
+    it('A by 1', () => {
       const oneA = multiply(a, 1)
-      expect(oneA.accepts([])).toBe(false)
-      expect(oneA.accepts(['a'])).toBe(true)
-      expect(oneA.accepts(['a', 'a'])).toBe(false)
+      assert.deepStrictEqual(oneA.accepts([]), false)
+      assert.deepStrictEqual(oneA.accepts(['a']), true)
+      assert.deepStrictEqual(oneA.accepts(['a', 'a']), false)
     })
 
-    it('A by 2', function () {
+    it('A by 2', () => {
       const twoA = multiply(a, 2)
-      expect(twoA.accepts([])).toBe(false)
-      expect(twoA.accepts(['a'])).toBe(false)
-      expect(twoA.accepts(['a', 'a'])).toBe(true)
-      expect(twoA.accepts(['a', 'a', 'a'])).toBe(false)
+      assert.deepStrictEqual(twoA.accepts([]), false)
+      assert.deepStrictEqual(twoA.accepts(['a']), false)
+      assert.deepStrictEqual(twoA.accepts(['a', 'a']), true)
+      assert.deepStrictEqual(twoA.accepts(['a', 'a', 'a']), false)
     })
 
-    it('A by 7', function () {
+    it('A by 7', () => {
       const sevenA = multiply(a, 7)
-      expect(sevenA.accepts(['a', 'a', 'a', 'a', 'a', 'a'])).toBe(false)
-      expect(sevenA.accepts(['a', 'a', 'a', 'a', 'a', 'a', 'a'])).toBe(true)
-      expect(sevenA.accepts(['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'])).toBe(false)
+      assert.deepStrictEqual(sevenA.accepts(['a', 'a', 'a', 'a', 'a', 'a']), false)
+      assert.deepStrictEqual(sevenA.accepts(['a', 'a', 'a', 'a', 'a', 'a', 'a']), true)
+      assert.deepStrictEqual(sevenA.accepts(['a', 'a', 'a', 'a', 'a', 'a', 'a', 'a']), false)
     })
 
-    it('(AB)?', function () {
+    it('(AB)?', () => {
       const unit = concatenate([a, b])
 
-      // This is "(ab)?
+      // This is "(ab)?"
       const optional = union([epsilon([]), unit])
-      expect(optional.accepts([])).toBe(true)
-      expect(optional.accepts(['a'])).toBe(false)
-      expect(optional.accepts(['b'])).toBe(false)
-      expect(optional.accepts(['a', 'b'])).toBe(true)
-      expect(optional.accepts(['a', 'a'])).toBe(false)
+      assert.deepStrictEqual(optional.accepts([]), true)
+      assert.deepStrictEqual(optional.accepts(['a']), false)
+      assert.deepStrictEqual(optional.accepts(['b']), false)
+      assert.deepStrictEqual(optional.accepts(['a', 'b']), true)
+      assert.deepStrictEqual(optional.accepts(['a', 'a']), false)
 
       // This is "(ab)?(ab)?"
       const optional2 = multiply(optional, 2)
-      expect(optional2.accepts([])).toBe(true)
-      expect(optional2.accepts(['a'])).toBe(false)
-      expect(optional2.accepts(['b'])).toBe(false)
-      expect(optional2.accepts(['a', 'a'])).toBe(false)
-      expect(optional2.accepts(['a', 'b'])).toBe(true)
-      expect(optional2.accepts(['b', 'a'])).toBe(false)
-      expect(optional2.accepts(['b', 'b'])).toBe(false)
-      expect(optional2.accepts(['a', 'a', 'a'])).toBe(false)
-      expect(optional2.accepts(['a', 'b', 'a', 'b'])).toBe(true)
+      assert.deepStrictEqual(optional2.accepts([]), true)
+      assert.deepStrictEqual(optional2.accepts(['a']), false)
+      assert.deepStrictEqual(optional2.accepts(['b']), false)
+      assert.deepStrictEqual(optional2.accepts(['a', 'a']), false)
+      assert.deepStrictEqual(optional2.accepts(['a', 'b']), true)
+      assert.deepStrictEqual(optional2.accepts(['b', 'a']), false)
+      assert.deepStrictEqual(optional2.accepts(['b', 'b']), false)
+      assert.deepStrictEqual(optional2.accepts(['a', 'a', 'a']), false)
+      assert.deepStrictEqual(optional2.accepts(['a', 'b', 'a', 'b']), true)
     })
 
-    it('should not create new oblivion states', function () {
+    it('should not create new oblivion states', () => {
       const abc = fsm(
         ['a', 'b', 'c'],
         ['0', '1', '2', '3'],
         '0',
         ['3'],
         {
-          0: {a: '1'},
-          1: {b: '2'},
-          2: {c: '3'}
+          0: { a: '1' },
+          1: { b: '2' },
+          2: { c: '3' }
         }
       )
-      expect(multiply(abc, 3).states.length).toBe(10)
+      assert.deepStrictEqual(multiply(abc, 3).states.length, 10)
     })
   })
 })
