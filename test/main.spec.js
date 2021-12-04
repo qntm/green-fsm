@@ -21,7 +21,6 @@ describe('fsm', () => {
     a = fsm(
       ['a', 'b'],
       ['0', '1', 'ob'],
-      '0',
       ['1'],
       {
         0: { a: '1', b: 'ob' },
@@ -33,7 +32,6 @@ describe('fsm', () => {
     b = fsm(
       ['a', 'b'],
       ['0', '1', 'ob'],
-      '0',
       ['1'],
       {
         0: { a: 'ob', b: '1' },
@@ -45,27 +43,21 @@ describe('fsm', () => {
 
   describe('constructor', () => {
     describe('rejects invalid inputs', () => {
-      it('rejects if initial isn\'t a state', () => {
-        assert.throws(() => {
-          fsm([], [], '1', [], {})
-        })
-      })
-
       it('rejects if final isn\'t a state', () => {
         assert.throws(() => {
-          fsm([], ['1'], '1', ['2'], {})
+          fsm([], ['1'], ['2'], {})
         })
       })
 
       it('rejects if alphabet has dupes', () => {
         assert.throws(() => {
-          fsm(['a', 'a'], ['1'], '1', [], {})
+          fsm(['a', 'a'], ['1'], [], {})
         })
       })
 
       it('rejects invalid transition', () => {
         assert.throws(() => {
-          fsm(['a'], ['1'], '1', [], { 1: { a: '2' } })
+          fsm(['a'], ['1'], [], { 1: { a: '2' } })
         })
       })
     })
@@ -83,7 +75,7 @@ describe('fsm', () => {
     })
 
     it('handles ANYTHING_ELSE and OBLIVION_STATE', () => {
-      assert.deepStrictEqual(fsm([ANYTHING_ELSE], ['0'], '0', [], {}).toString(), [
+      assert.deepStrictEqual(fsm([ANYTHING_ELSE], ['0'], [], {}).toString(), [
         '  name final? @@ANYTHING_ELSE \n',
         '------------------------------\n',
         '* 0    false                  \n'
@@ -109,7 +101,6 @@ describe('fsm', () => {
       const brzozowski = fsm(
         ['a', 'b'],
         ['A', 'B', 'C', 'D', 'E'],
-        'A',
         ['C', 'E'],
         {
           A: { a: 'B', b: 'D' },
@@ -138,7 +129,6 @@ describe('fsm', () => {
       const div3 = fsm(
         ['0', '1'],
         ['initial', 'zero', '0', '1', '2', 'oblivion'],
-        'initial',
         ['zero', '0'],
         {
           initial: { 0: 'zero', 1: '1' },
@@ -180,7 +170,6 @@ describe('fsm', () => {
       assert.deepStrictEqual(fsm(
         ['a', 'b', 'c', ANYTHING_ELSE],
         ['1'],
-        '1',
         ['1'],
         {
           1: { a: '1', b: '1', c: '1', [ANYTHING_ELSE]: '1' }
@@ -204,7 +193,6 @@ describe('fsm', () => {
       const blockquote = fsm(
         ['/', '*', ANYTHING_ELSE],
         ['0', '1', '2', '3', '4', '5'],
-        '0',
         ['4'],
         {
           0: { '/': '1' },
@@ -258,31 +246,31 @@ describe('fsm', () => {
   describe('_connectAll', () => {
     it('works', () => {
       const empty = epsilon(['a'])
-      assert.deepStrictEqual(_connectAll([empty], 0, empty.initial), [
-        { i: 0, substate: empty.initial }
+      assert.deepStrictEqual(_connectAll([empty], 0, empty.states[0]), [
+        { i: 0, substate: empty.states[0] }
       ])
     })
 
     it('works A', () => {
-      assert.deepStrictEqual(_connectAll([a], 0, a.initial), [
-        { i: 0, substate: a.initial }
+      assert.deepStrictEqual(_connectAll([a], 0, a.states[0]), [
+        { i: 0, substate: a.states[0] }
       ])
     })
 
     it('works too', () => {
       const empty = epsilon(['a'])
-      assert.deepStrictEqual(_connectAll([empty, a], 0, empty.initial), [
-        { i: 0, substate: empty.initial },
-        { i: 1, substate: a.initial }
+      assert.deepStrictEqual(_connectAll([empty, a], 0, empty.states[0]), [
+        { i: 0, substate: empty.states[0] },
+        { i: 1, substate: a.states[0] }
       ])
     })
 
     it('works three', () => {
       const empty = epsilon(['a'])
-      assert.deepStrictEqual(_connectAll([empty, empty, a], 0, empty.initial), [
-        { i: 0, substate: empty.initial },
-        { i: 1, substate: empty.initial },
-        { i: 2, substate: a.initial }
+      assert.deepStrictEqual(_connectAll([empty, empty, a], 0, empty.states[0]), [
+        { i: 0, substate: empty.states[0] },
+        { i: 1, substate: empty.states[0] },
+        { i: 2, substate: a.states[0] }
       ])
     })
   })
@@ -324,8 +312,8 @@ describe('fsm', () => {
     it('unifies alphabets properly', () => {
       // Thanks to sparse maps it should now be possible to compute the union of FSMs
       // with disagreeing alphabets!
-      const a = fsm(['a'], ['0', '1'], '0', ['1'], { 0: { a: '1' } })
-      const b = fsm(['b'], ['0', '1'], '0', ['1'], { 0: { b: '1' } })
+      const a = fsm(['a'], ['0', '1'], ['1'], { 0: { a: '1' } })
+      const b = fsm(['b'], ['0', '1'], ['1'], { 0: { b: '1' } })
       assert.deepStrictEqual(concatenate([a, b]).accepts(['a', 'b']), true)
     })
 
@@ -344,8 +332,7 @@ describe('fsm', () => {
       beforeEach(() => {
         int5A = fsm(
           ['a', 'b', 'c', ANYTHING_ELSE],
-          ['0', '1'],
-          '1',
+          ['1', '0'],
           ['1'],
           {
             0: { [ANYTHING_ELSE]: '0', a: '0', b: '0', c: '0' },
@@ -355,8 +342,7 @@ describe('fsm', () => {
 
         int5B = fsm(
           ['a', 'b', 'c', ANYTHING_ELSE],
-          ['0', '1', '2'],
-          '1',
+          ['1', '0', '2'],
           ['0'],
           {
             0: { [ANYTHING_ELSE]: '2', a: '2', b: '2', c: '2' },
@@ -384,7 +370,6 @@ describe('fsm', () => {
       const abc = fsm(
         ['a', 'b', 'c'],
         ['0', '1', '2', '3'],
-        '0',
         ['3'],
         {
           0: { a: '1' },
@@ -429,8 +414,8 @@ describe('fsm', () => {
     it('unifies alphabets properly', () => {
       // Thanks to sparse maps it should now be possible to compute the union of FSMs
       // with disagreeing alphabets!
-      const a = fsm(['a'], ['0', '1'], '0', ['1'], { 0: { a: '1' } })
-      const b = fsm(['b'], ['0', '1'], '0', ['1'], { 0: { b: '1' } })
+      const a = fsm(['a'], ['0', '1'], ['1'], { 0: { a: '1' } })
+      const b = fsm(['b'], ['0', '1'], ['1'], { 0: { b: '1' } })
       assert.deepStrictEqual(union([a, b]).accepts(['a']), true)
       assert.deepStrictEqual(union([a, b]).accepts(['b']), true)
     })
@@ -439,7 +424,6 @@ describe('fsm', () => {
       const abc = fsm(
         ['a', 'b', 'c'],
         ['0', '1', '2', '3'],
-        '0',
         ['3'],
         {
           0: { a: '1' },
@@ -474,7 +458,6 @@ describe('fsm', () => {
       const abcdotdotdot = fsm(
         ['a', 'b', 'c', 'd', 'e', 'f', ANYTHING_ELSE],
         ['0', '1', '2', '3', '4', '5', '6'],
-        '0',
         ['6'],
         {
           0: { a: '1' },
@@ -490,7 +473,6 @@ describe('fsm', () => {
       const dotdotdotdef = fsm(
         ['a', 'b', 'c', 'd', 'e', 'f', ANYTHING_ELSE],
         ['0', '1', '2', '3', '4', '5', '6'],
-        '0',
         ['6'],
         {
           0: { a: '1', b: '1', c: '1', d: '1', e: '1', f: '1', [ANYTHING_ELSE]: '1' },
@@ -511,7 +493,6 @@ describe('fsm', () => {
       const yyyymmdd = fsm(
         ['0', '1', '-', ANYTHING_ELSE],
         ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
-        '0',
         ['10'],
         {
           0: { 0: '1', 1: '1' },
@@ -531,7 +512,6 @@ describe('fsm', () => {
       const nineteen = fsm(
         ['0', '1', '-', ANYTHING_ELSE],
         ['0', '1', '2', '3'],
-        '0',
         ['2', '3'],
         {
           0: { 0: '1' },
@@ -549,7 +529,6 @@ describe('fsm', () => {
       const yyyymmdd = fsm(
         ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', ANYTHING_ELSE],
         ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
-        '0',
         ['10'],
         {
           0: { 0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1', 6: '1', 7: '1', 8: '1', 9: '1' },
@@ -569,7 +548,6 @@ describe('fsm', () => {
       const nineteen = fsm(
         ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', ANYTHING_ELSE],
         ['0', '1', '2', '3'],
-        '0',
         ['2', '3'],
         {
           0: { 1: '1' },
@@ -589,7 +567,6 @@ describe('fsm', () => {
       const any = fsm(
         [ANYTHING_ELSE],
         ['0', '1'],
-        '0',
         ['1'],
         {
           0: { [ANYTHING_ELSE]: '1' }
@@ -619,7 +596,6 @@ describe('fsm', () => {
       const abstar = fsm(
         ['a', 'b'],
         ['0', '1'],
-        '0',
         ['1'],
         {
           0: { a: '1' },
@@ -645,7 +621,6 @@ describe('fsm', () => {
       const starred = star(fsm(
         ['a', 'b'],
         ['0', '1', '2', 'oblivion'],
-        '0',
         ['2'],
         {
           0: { a: '0', b: '1' },
@@ -670,7 +645,6 @@ describe('fsm', () => {
       const abc = fsm(
         ['a', 'b', 'c'],
         ['0', '1', '2', '3'],
-        '0',
         ['3'],
         {
           0: { a: '1' },
@@ -745,7 +719,6 @@ describe('fsm', () => {
       const abc = fsm(
         ['a', 'b', 'c'],
         ['0', '1', '2', '3'],
-        '0',
         ['3'],
         {
           0: { a: '1' },

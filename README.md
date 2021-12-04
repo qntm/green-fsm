@@ -32,9 +32,9 @@ console.log(a.accepts(['c']))      // throws exception
 
 `green-fsm` exposes the following properties and functions. These are a little up in the air right now.
 
-### fsm(alphabet, states, initial, finals, map)
+### fsm(alphabet, states, finals, map)
 
-Build a finite state machine according to the supplied parameters. Symbols in the alphabet and states are used as keys in `Object`s, so they should be either `String`s or `Symbol`s.
+Build a finite state machine according to the supplied parameters. Symbols in the alphabet and states are used as keys in `Object`s, so they should be either `String`s or `Symbol`s. `states[0]` is the initial state.
 
 `map` may be sparse. If a transition is missing from `map`, then it is assumed that this transition leads to an undocumented "oblivion state" which is not final. This oblivion state does not appear when the FSM is printed out.
 
@@ -42,7 +42,6 @@ The resulting object has some properties and methods on it.
 
 #### alphabet
 #### states
-#### initial
 #### finals
 #### map
 
