@@ -2,11 +2,9 @@
 
 import assert from 'assert'
 import {
-  fsm,
+  Fsm,
   star,
   ANYTHING_ELSE,
-  epsilon,
-  nothing,
   concatenate,
   intersection,
   union,
@@ -18,8 +16,7 @@ describe('fsm', () => {
   let a
   let b
   beforeEach(() => {
-    a = fsm(
-      ['a', 'b'],
+    a = new Fsm(
       ['0', '1', 'ob'],
       ['1'],
       {
@@ -29,8 +26,7 @@ describe('fsm', () => {
       }
     )
 
-    b = fsm(
-      ['a', 'b'],
+    b = new Fsm(
       ['0', '1', 'ob'],
       ['1'],
       {
@@ -44,21 +40,11 @@ describe('fsm', () => {
   describe('constructor', () => {
     describe('rejects invalid inputs', () => {
       it('rejects if final isn\'t a state', () => {
-        assert.throws(() => {
-          fsm([], ['1'], ['2'], {})
-        })
-      })
-
-      it('rejects if alphabet has dupes', () => {
-        assert.throws(() => {
-          fsm(['a', 'a'], ['1'], [], {})
-        })
+        assert.throws(() => new Fsm(['1'], ['2'], {}))
       })
 
       it('rejects invalid transition', () => {
-        assert.throws(() => {
-          fsm(['a'], ['1'], [], { 1: { a: '2' } })
-        })
+        assert.throws(() => new Fsm(['1'], [], { 1: { a: '2' } }))
       })
     })
   })
@@ -66,19 +52,24 @@ describe('fsm', () => {
   describe('toString', () => {
     it('works', () => {
       assert.deepStrictEqual(a.toString(), [
-        '  name final? a  b  \n',
-        '--------------------\n',
-        '* 0    false  1  ob \n',
-        '  1    true   ob ob \n',
-        '  ob   false  ob ob \n'
+        '   name final? a  b  \n',
+        '---------------------\n',
+        '-> 0    false  1  ob \n',
+        '   1    true   ob ob \n',
+        '   ob   false  ob ob \n'
       ].join(''))
     })
 
     it('handles ANYTHING_ELSE and OBLIVION_STATE', () => {
-      assert.deepStrictEqual(fsm([ANYTHING_ELSE], ['0'], [], {}).toString(), [
-        '  name final? @@ANYTHING_ELSE \n',
-        '------------------------------\n',
-        '* 0    false                  \n'
+      assert.deepStrictEqual(new Fsm(['0', '1'], [], {
+        0: {
+          [ANYTHING_ELSE]: '1'
+        }
+      }).toString(), [
+        '   name final? @@ANYTHING_ELSE \n',
+        '-------------------------------\n',
+        '-> 0    false  1               \n',
+        '   1    false                  \n'
       ].join(''))
     })
   })
@@ -98,8 +89,7 @@ describe('fsm', () => {
 
     it('advanced', () => {
       // This is (a|b)*a(a|b)
-      const brzozowski = fsm(
-        ['a', 'b'],
+      const brzozowski = new Fsm(
         ['A', 'B', 'C', 'D', 'E'],
         ['C', 'E'],
         {
@@ -126,8 +116,7 @@ describe('fsm', () => {
     it('binary multiples of 3', () => {
       // Disallows the empty string
       // Allows "0" on its own, but not leading zeroes.
-      const div3 = fsm(
-        ['0', '1'],
+      const div3 = new Fsm(
         ['initial', 'zero', '0', '1', '2', 'oblivion'],
         ['zero', '0'],
         {
@@ -167,8 +156,7 @@ describe('fsm', () => {
     })
 
     it('accepts anything else', () => {
-      assert.deepStrictEqual(fsm(
-        ['a', 'b', 'c', ANYTHING_ELSE],
+      assert.deepStrictEqual(new Fsm(
         ['1'],
         ['1'],
         {
@@ -177,21 +165,20 @@ describe('fsm', () => {
       ).accepts(['d']), true)
     })
 
-    it('nothing', () => {
-      assert.deepStrictEqual(nothing(['a']).accepts([]), false)
-      assert.deepStrictEqual(nothing(['a']).accepts(['a']), false)
+    it('Fsm.NOTHING', () => {
+      assert.deepStrictEqual(Fsm.NOTHING.accepts([]), false)
+      assert.deepStrictEqual(Fsm.NOTHING.accepts(['a']), false)
     })
 
-    it('epsilon', () => {
-      assert.deepStrictEqual(epsilon(['a']).accepts([]), true)
-      assert.deepStrictEqual(epsilon(['a']).accepts(['a']), false)
+    it('Fsm.EPSILON', () => {
+      assert.deepStrictEqual(Fsm.EPSILON.accepts([]), true)
+      assert.deepStrictEqual(Fsm.EPSILON.accepts(['a']), false)
     })
   })
 
   describe('strings', () => {
     it('blockquote', () => {
-      const blockquote = fsm(
-        ['/', '*', ANYTHING_ELSE],
+      const blockquote = new Fsm(
         ['0', '1', '2', '3', '4', '5'],
         ['4'],
         {
@@ -207,19 +194,13 @@ describe('fsm', () => {
       assert.deepStrictEqual(gen.next().value, ['/', '*', '*', '/'])
     })
 
-    it('nothing', () => {
-      const gen = nothing(['a', 'b']).strings()
+    it('Fsm.NOTHING', () => {
+      const gen = Fsm.NOTHING.strings()
       assert.deepStrictEqual(gen.next().done, true)
     })
 
-    it('epsilon', () => {
-      const gen = epsilon(['a', 'b']).strings()
-      assert.deepStrictEqual(gen.next().value, [])
-      assert.deepStrictEqual(gen.next().done, true)
-    })
-
-    it('epsilon over an empty alphabet', () => {
-      const gen = epsilon([]).strings()
+    it('Fsm.EPSILON', () => {
+      const gen = Fsm.EPSILON.strings()
       assert.deepStrictEqual(gen.next().value, [])
       assert.deepStrictEqual(gen.next().done, true)
     })
@@ -245,9 +226,8 @@ describe('fsm', () => {
 
   describe('_connectAll', () => {
     it('works', () => {
-      const empty = epsilon(['a'])
-      assert.deepStrictEqual(_connectAll([empty], 0, empty.states[0]), [
-        { i: 0, substate: empty.states[0] }
+      assert.deepStrictEqual(_connectAll([Fsm.EPSILON], 0, Fsm.EPSILON.states[0]), [
+        { i: 0, substate: Fsm.EPSILON.states[0] }
       ])
     })
 
@@ -258,18 +238,16 @@ describe('fsm', () => {
     })
 
     it('works too', () => {
-      const empty = epsilon(['a'])
-      assert.deepStrictEqual(_connectAll([empty, a], 0, empty.states[0]), [
-        { i: 0, substate: empty.states[0] },
+      assert.deepStrictEqual(_connectAll([Fsm.EPSILON, a], 0, Fsm.EPSILON.states[0]), [
+        { i: 0, substate: Fsm.EPSILON.states[0] },
         { i: 1, substate: a.states[0] }
       ])
     })
 
     it('works three', () => {
-      const empty = epsilon(['a'])
-      assert.deepStrictEqual(_connectAll([empty, empty, a], 0, empty.states[0]), [
-        { i: 0, substate: empty.states[0] },
-        { i: 1, substate: empty.states[0] },
+      assert.deepStrictEqual(_connectAll([Fsm.EPSILON, Fsm.EPSILON, a], 0, Fsm.EPSILON.states[0]), [
+        { i: 0, substate: Fsm.EPSILON.states[0] },
+        { i: 1, substate: Fsm.EPSILON.states[0] },
         { i: 2, substate: a.states[0] }
       ])
     })
@@ -290,8 +268,8 @@ describe('fsm', () => {
       assert.deepStrictEqual(concAA.accepts(['a', 'a', 'a']), false)
     })
 
-    it('epsilon, A and A', () => {
-      const concAA2 = concatenate([epsilon(['a', 'b']), a, a])
+    it('Fsm.EPSILON, A and A', () => {
+      const concAA2 = concatenate([Fsm.EPSILON, a, a])
       assert.deepStrictEqual(concAA2.accepts([]), false)
       assert.deepStrictEqual(concAA2.accepts(['a']), false)
       assert.deepStrictEqual(concAA2.accepts(['a', 'a']), true)
@@ -312,17 +290,15 @@ describe('fsm', () => {
     it('unifies alphabets properly', () => {
       // Thanks to sparse maps it should now be possible to compute the union of FSMs
       // with disagreeing alphabets!
-      const a = fsm(['a'], ['0', '1'], ['1'], { 0: { a: '1' } })
-      const b = fsm(['b'], ['0', '1'], ['1'], { 0: { b: '1' } })
+      const a = new Fsm(['0', '1'], ['1'], { 0: { a: '1' } })
+      const b = new Fsm(['0', '1'], ['1'], { 0: { b: '1' } })
       assert.deepStrictEqual(concatenate([a, b]).accepts(['a', 'b']), true)
     })
 
     it('defect', () => {
       // This exposes a defect in concatenate.
-      assert.deepStrictEqual(concatenate([a, epsilon(['a', 'b']), a]).accepts(['a', 'a']), true)
-      assert.deepStrictEqual(concatenate([a, epsilon(['a']), a]).accepts(['a', 'a']), true)
-      assert.deepStrictEqual(concatenate([a, epsilon(['a', 'b']), epsilon(['a', 'b']), a]).accepts(['a', 'a']), true)
-      assert.deepStrictEqual(concatenate([a, epsilon(['a']), epsilon(['a']), a]).accepts(['a', 'a']), true)
+      assert.deepStrictEqual(concatenate([a, Fsm.EPSILON, a]).accepts(['a', 'a']), true)
+      assert.deepStrictEqual(concatenate([a, Fsm.EPSILON, Fsm.EPSILON, a]).accepts(['a', 'a']), true)
     })
 
     // Odd bug with concatenate(), exposed by "[bc]*c"
@@ -330,8 +306,7 @@ describe('fsm', () => {
       let int5A
       let int5B
       beforeEach(() => {
-        int5A = fsm(
-          ['a', 'b', 'c', ANYTHING_ELSE],
+        int5A = new Fsm(
           ['1', '0'],
           ['1'],
           {
@@ -340,8 +315,7 @@ describe('fsm', () => {
           }
         )
 
-        int5B = fsm(
-          ['a', 'b', 'c', ANYTHING_ELSE],
+        int5B = new Fsm(
           ['1', '0', '2'],
           ['0'],
           {
@@ -367,8 +341,7 @@ describe('fsm', () => {
     })
 
     it('should not create new oblivion states', () => {
-      const abc = fsm(
-        ['a', 'b', 'c'],
+      const abc = new Fsm(
         ['0', '1', '2', '3'],
         ['3'],
         {
@@ -394,8 +367,8 @@ describe('fsm', () => {
       assert.deepStrictEqual(aorb.accepts(['b', 'b']), false)
     })
 
-    it('epsilon or A', () => {
-      const eora = union([epsilon(['a']), a])
+    it('Fsm.EPSILON or A', () => {
+      const eora = union([Fsm.EPSILON, a])
       assert.deepStrictEqual(eora.accepts([]), true)
       assert.deepStrictEqual(eora.accepts(['a']), true)
       assert.deepStrictEqual(eora.accepts(['b']), false)
@@ -406,7 +379,7 @@ describe('fsm', () => {
     })
 
     it('A or nothing', () => {
-      const aornothing = union([a, nothing(['a', 'b'])])
+      const aornothing = union([a, Fsm.NOTHING])
       assert.deepStrictEqual(aornothing.accepts([]), false)
       assert.deepStrictEqual(aornothing.accepts(['a']), true)
     })
@@ -414,15 +387,14 @@ describe('fsm', () => {
     it('unifies alphabets properly', () => {
       // Thanks to sparse maps it should now be possible to compute the union of FSMs
       // with disagreeing alphabets!
-      const a = fsm(['a'], ['0', '1'], ['1'], { 0: { a: '1' } })
-      const b = fsm(['b'], ['0', '1'], ['1'], { 0: { b: '1' } })
+      const a = new Fsm(['0', '1'], ['1'], { 0: { a: '1' } })
+      const b = new Fsm(['0', '1'], ['1'], { 0: { b: '1' } })
       assert.deepStrictEqual(union([a, b]).accepts(['a']), true)
       assert.deepStrictEqual(union([a, b]).accepts(['b']), true)
     })
 
     it('should not create new oblivion states', () => {
-      const abc = fsm(
-        ['a', 'b', 'c'],
+      const abc = new Fsm(
         ['0', '1', '2', '3'],
         ['3'],
         {
@@ -451,12 +423,11 @@ describe('fsm', () => {
       assert.deepStrictEqual(both.accepts([]), true)
       assert.deepStrictEqual(both.accepts(['a']), false)
       assert.deepStrictEqual(both.accepts(['b']), false)
-      assert.throws(() => both.accepts([ANYTHING_ELSE]))
+      assert.deepStrictEqual(both.accepts([ANYTHING_ELSE]), false)
     })
 
     it('strange bug', () => {
-      const abcdotdotdot = fsm(
-        ['a', 'b', 'c', 'd', 'e', 'f', ANYTHING_ELSE],
+      const abcdotdotdot = new Fsm(
         ['0', '1', '2', '3', '4', '5', '6'],
         ['6'],
         {
@@ -470,8 +441,7 @@ describe('fsm', () => {
         }
       )
 
-      const dotdotdotdef = fsm(
-        ['a', 'b', 'c', 'd', 'e', 'f', ANYTHING_ELSE],
+      const dotdotdotdef = new Fsm(
         ['0', '1', '2', '3', '4', '5', '6'],
         ['6'],
         {
@@ -490,8 +460,7 @@ describe('fsm', () => {
 
     it('stranger bug minus 1', () => {
       // /[01][01]00-00-00/ and /00.*/
-      const yyyymmdd = fsm(
-        ['0', '1', '-', ANYTHING_ELSE],
+      const yyyymmdd = new Fsm(
         ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
         ['10'],
         {
@@ -509,8 +478,7 @@ describe('fsm', () => {
         }
       )
 
-      const nineteen = fsm(
-        ['0', '1', '-', ANYTHING_ELSE],
+      const nineteen = new Fsm(
         ['0', '1', '2', '3'],
         ['2', '3'],
         {
@@ -526,8 +494,7 @@ describe('fsm', () => {
 
     it('stranger bug', () => {
       // /\d\d\d\d-\d\d-\d\d/ and /19.*/
-      const yyyymmdd = fsm(
-        ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', ANYTHING_ELSE],
+      const yyyymmdd = new Fsm(
         ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
         ['10'],
         {
@@ -545,8 +512,7 @@ describe('fsm', () => {
         }
       )
 
-      const nineteen = fsm(
-        ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', ANYTHING_ELSE],
+      const nineteen = new Fsm(
         ['0', '1', '2', '3'],
         ['2', '3'],
         {
@@ -564,8 +530,7 @@ describe('fsm', () => {
 
   describe('ANYTHING_ELSE', () => {
     it('works', () => {
-      const any = fsm(
-        [ANYTHING_ELSE],
+      const any = new Fsm(
         ['0', '1'],
         ['1'],
         {
@@ -593,8 +558,7 @@ describe('fsm', () => {
 
     it('bug 28', () => {
       // This is ab*
-      const abstar = fsm(
-        ['a', 'b'],
+      const abstar = new Fsm(
         ['0', '1'],
         ['1'],
         {
@@ -618,8 +582,7 @@ describe('fsm', () => {
     it('advanced', () => {
       // This is (a*ba)*. Naively connecting the final states to the initial state
       // gives the incorrect result here.
-      const starred = star(fsm(
-        ['a', 'b'],
+      const starred = star(new Fsm(
         ['0', '1', '2', 'oblivion'],
         ['2'],
         {
@@ -642,8 +605,7 @@ describe('fsm', () => {
     })
 
     it('should not create new oblivion states', () => {
-      const abc = fsm(
-        ['a', 'b', 'c'],
+      const abc = new Fsm(
         ['0', '1', '2', '3'],
         ['3'],
         {
@@ -695,7 +657,7 @@ describe('fsm', () => {
       const unit = concatenate([a, b])
 
       // This is "(ab)?"
-      const optional = union([epsilon([]), unit])
+      const optional = union([Fsm.EPSILON, unit])
       assert.deepStrictEqual(optional.accepts([]), true)
       assert.deepStrictEqual(optional.accepts(['a']), false)
       assert.deepStrictEqual(optional.accepts(['b']), false)
@@ -716,8 +678,7 @@ describe('fsm', () => {
     })
 
     it('should not create new oblivion states', () => {
-      const abc = fsm(
-        ['a', 'b', 'c'],
+      const abc = new Fsm(
         ['0', '1', '2', '3'],
         ['3'],
         {

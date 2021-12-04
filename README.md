@@ -11,9 +11,9 @@ npm install green-fsm
 ## Example
 
 ```js
-import { fsm } from 'green-fsm'
+import { Fsm } from 'green-fsm'
 
-const a = fsm(
+const a = new Fsm(
   ['a', 'b'],   // alphabet
   ['0', '1'],   // states
   '0',          // initial state
@@ -32,11 +32,11 @@ console.log(a.accepts(['c']))      // throws exception
 
 `green-fsm` exposes the following properties and functions. These are a little up in the air right now.
 
-### fsm(alphabet, states, finals, map)
+### Fsm(states, finals, map)
 
-Build a finite state machine according to the supplied parameters. Symbols in the alphabet and states are used as keys in `Object`s, so they should be either `String`s or `Symbol`s. `states[0]` is the initial state.
+Build a finite state machine according to the supplied parameters. `states[0]` is the initial state.
 
-`map` may be sparse. If a transition is missing from `map`, then it is assumed that this transition leads to an undocumented "oblivion state" which is not final. This oblivion state does not appear when the FSM is printed out.
+`map` can use either `String`s or `Symbol`s. `map` may be sparse. If a transition is missing from `map`, then it is assumed that this transition leads to an undocumented "oblivion state" which is not final. This oblivion state does not appear when the FSM is printed out.
 
 The resulting object has some properties and methods on it.
 
@@ -79,13 +79,13 @@ Crawl what is assumed to be an FSM and return a new finite state machine object 
 
 Your implementation of `follow` (above) may also return the special `Symbol` `OBLIVION_STATE` to indicate that you have reached an inescapable, non-final "oblivion state". This state and transitions to it will be omitted from the resulting FSM.
 
-### nothing(alphabet)
+### Fsm.NOTHING
 
-Returns an FSM over the supplied alphabet which accepts no inputs at all.
+This FSM accepts no inputs at all.
 
-### epsilon(alphabet)
+### Fsm.EPSILON
 
-Returns an FSM over the supplied alphabet which accepts only the empty input, `[]`.
+This FSM which accepts only the empty input, `[]`.
 
 ### union(fsms)
 
