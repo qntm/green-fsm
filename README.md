@@ -11,7 +11,7 @@ npm install green-fsm
 ## Example
 
 ```js
-const {fsm} = require('green-fsm')
+import { fsm } from 'green-fsm'
 
 const a = fsm(
   ['a', 'b'],   // alphabet
@@ -32,9 +32,9 @@ console.log(a.accepts(['c']))      // throws exception
 
 `green-fsm` exposes the following properties and functions. These are a little up in the air right now.
 
-### fsm(alphabet, states, initial, finals, map)
+### fsm(alphabet, states, finals, map)
 
-Build a finite state machine according to the supplied parameters. Symbols in the alphabet and states are used as keys in `Object`s, so they should be either `String`s or `Symbol`s.
+Build a finite state machine according to the supplied parameters. Symbols in the alphabet and states are used as keys in `Object`s, so they should be either `String`s or `Symbol`s. `states[0]` is the initial state.
 
 `map` may be sparse. If a transition is missing from `map`, then it is assumed that this transition leads to an undocumented "oblivion state" which is not final. This oblivion state does not appear when the FSM is printed out.
 
@@ -42,7 +42,6 @@ The resulting object has some properties and methods on it.
 
 #### alphabet
 #### states
-#### initial
 #### finals
 #### map
 
@@ -68,17 +67,17 @@ Pretty-prints this FSM's structure.
 
 Returns an object conforming to the iterator protocol. This means it has a single property, `next`, which is a function which can be called repeatedly. At first, calling `next` will return results of the form `{value, done: false}` where `value` is an accepted input of the FSM i.e. an array of symbols. If the FSM is finite, eventally results will take the form `{done: true}`.
 
-### anythingElse
+### ANYTHING_ELSE
 
-Ordinarily, you may only feed known alphabet symbols into the FSM. Any other symbol will result in an exception being thrown. However, if you add the special `Symbol` `anythingElse` to your alphabet, then any unrecognised symbol will be automatically converted into `anythingElse` before following whatever transition you have specified for this symbol.
+Ordinarily, you may only feed known alphabet symbols into the FSM. Any other symbol will result in an exception being thrown. However, if you add the special `Symbol` `ANYTHING_ELSE` to your alphabet, then any unrecognised symbol will be automatically converted into `ANYTHING_ELSE` before following whatever transition you have specified for this symbol.
 
 ### crawl(alphabet, initial, final, follow)
 
 Crawl what is assumed to be an FSM and return a new finite state machine object representing it. Starts at state `initial`. At any given state, `crawl` calls `final(state)` to determine whether it is final. Then, for each symbol in `alphabet`, it calls `follow(state, symbol)` to try to discover new states. Obviously this procedure could go on for ever if your implementation of `follow` is faulty.
 
-### oblivionState
+### OBLIVION_STATE
 
-Your implementation of `follow` (above) may also return the special `Symbol` `oblivionState` to indicate that you have reached an inescapable, non-final "oblivion state". This state and transitions to it will be omitted from the resulting FSM.
+Your implementation of `follow` (above) may also return the special `Symbol` `OBLIVION_STATE` to indicate that you have reached an inescapable, non-final "oblivion state". This state and transitions to it will be omitted from the resulting FSM.
 
 ### nothing(alphabet)
 

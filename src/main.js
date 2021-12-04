@@ -2,13 +2,11 @@
   Finite state machine library.
 */
 
-'use strict'
-
 // Special alphabet value
-const anythingElse = Symbol('anythingElse')
+export const ANYTHING_ELSE = Symbol('ANYTHING_ELSE')
 
 // Special oblivion state
-const oblivionState = Symbol('oblivionState')
+export const OBLIVION_STATE = Symbol('OBLIVION_STATE')
 
 /**
   A Finite State Machine or FSM has an alphabet and a set of states. At any
@@ -23,11 +21,11 @@ const oblivionState = Symbol('oblivionState')
   closure), intersected, and simplified.
   The majority of these methods are available using operator overloads.
 */
-const fsm = (alphabet, states, initial, finals, map) => {
+export const fsm = (alphabet, states, finals, map) => {
   /*
     `alphabet` is an array of symbols the FSM can be fed
-    `states` is an array of states for the FSM
-    `initial` is the initial state
+    `states` is a non-empty array of states for the FSM
+      the first state in the array is the initial state
     `finals` is an array of accepting states
     `map` may be sparse (i.e. it may omit transitions). In the case of
     omitted transitions, a non-final "oblivion" state is simulated.
@@ -41,10 +39,6 @@ const fsm = (alphabet, states, initial, finals, map) => {
     }
     _alphabet[symbol] = true
   })
-
-  if (!states.includes(initial)) {
-    throw Error('Initial state ' + initial + ' must be one of ' + states.join(', '))
-  }
 
   finals.forEach(fynal => {
     if (!states.includes(fynal)) {
@@ -67,15 +61,15 @@ const fsm = (alphabet, states, initial, finals, map) => {
   // `map` becomes a function
   const follow = function (state, symbol) {
     if (!alphabet.includes(symbol)) {
-      if (!alphabet.includes(anythingElse)) {
+      if (!alphabet.includes(ANYTHING_ELSE)) {
         throw Error('Unrecognised symbol ' + String(symbol))
       }
-      symbol = anythingElse
+      symbol = ANYTHING_ELSE
     }
 
     return state in map && symbol in map[state]
       ? map[state][symbol]
-      : oblivionState
+      : OBLIVION_STATE
   }
 
   let _liveStates
@@ -83,7 +77,6 @@ const fsm = (alphabet, states, initial, finals, map) => {
   return {
     alphabet: alphabet,
     states: states,
-    initial: initial,
     finals: finals,
     map: map,
 
@@ -95,11 +88,11 @@ const fsm = (alphabet, states, initial, finals, map) => {
       symbols). Equivalently, consider the FSM as a possibly-infinite set of
       strings and test whether the input string is a member of it.
       This is actually mainly used for unit testing purposes.
-      If `anythingElse` is in your alphabet, then any symbol not in your
-      alphabet will be converted to `anythingElse`.
+      If `ANYTHING_ELSE` is in your alphabet, then any symbol not in your
+      alphabet will be converted to `ANYTHING_ELSE`.
     */
     accepts: function (input) {
-      return hasFinalState(input.reduce(follow, initial))
+      return hasFinalState(input.reduce(follow, states[0]))
     },
 
     _getLiveStates: function () {
@@ -138,13 +131,11 @@ const fsm = (alphabet, states, initial, finals, map) => {
       return state in this._getLiveStates()
     },
 
-    repr: () => 'fsm(' + [alphabet, states, initial, finals, map].map(x => JSON.stringify(x)).join(', ') + ')',
-
     toString: function () {
       const stringifyState = state =>
-        state === oblivionState ? '' : state
+        state === OBLIVION_STATE ? '' : state
       const stringifySymbol = symbol =>
-        symbol === anythingElse ? '@@anythingElse' : symbol
+        symbol === ANYTHING_ELSE ? '@@ANYTHING_ELSE' : symbol
 
       let rows = [
         // top row
@@ -157,8 +148,8 @@ const fsm = (alphabet, states, initial, finals, map) => {
         )
       ].concat(
         // other rows
-        this.states.map(state => [
-          state === this.initial ? '*' : '',
+        this.states.map((state, i) => [
+          i === 0 ? '*' : '',
           stringifyState(state),
           hasFinalState(state) ? 'true' : 'false'
         ].concat(
@@ -202,7 +193,7 @@ const fsm = (alphabet, states, initial, finals, map) => {
       // string.
       const strings = [{
         cstring: [],
-        cstate: this.initial
+        cstate: this.states[0]
       }]
       let i = -1
 
@@ -212,7 +203,7 @@ const fsm = (alphabet, states, initial, finals, map) => {
           while (true) {
             i++
             if (i >= strings.length) {
-              return {done: true}
+              return { done: true }
             }
             const string = strings[i]
             const cstring = string.cstring
@@ -248,7 +239,7 @@ const fsm = (alphabet, states, initial, finals, map) => {
   demonstrates that this is possible, and is also extremely useful
   in some situations
 */
-const nothing = alphabet => {
+export const nothing = alphabet => {
   const state = 'A'
 
   const map = {}
@@ -257,17 +248,17 @@ const nothing = alphabet => {
     map[state][symbol] = state
   })
 
-  return fsm(alphabet, [state], state, [], map)
+  return fsm(alphabet, [state], [], map)
 }
 
 /**
   Return an FSM matching an empty string, "", only.
   This is very useful in many situations
 */
-const epsilon = alphabet => {
+export const epsilon = alphabet => {
   const state = 'A'
   const map = {}
-  return fsm(alphabet, [state], state, [state], map)
+  return fsm(alphabet, [state], [state], map)
 }
 
 const unifyAlphabets = alphabets => {
@@ -285,17 +276,17 @@ const unifyAlphabets = alphabets => {
 const parallel = (fsms, isFinal) => {
   const alphabet = unifyAlphabets(fsms.map(fsm => fsm.alphabet))
 
-  const initial = fsms.map(fsm => ({fsm: fsm, substate: fsm.initial}))
+  const initial = fsms.map(fsm => ({ fsm: fsm, substate: fsm.states[0] }))
 
   // dedicated function accepts a "superset" and returns the next "superset"
   // obtained by following this transition in the new FSM
   const follow = (state, symbol) => {
     const next = state
       .filter(pair => pair.fsm.alphabet.includes(symbol))
-      .map(pair => ({fsm: pair.fsm, substate: pair.fsm.follow(pair.substate, symbol)}))
-      .filter(pair => pair.substate !== oblivionState)
+      .map(pair => ({ fsm: pair.fsm, substate: pair.fsm.follow(pair.substate, symbol) }))
+      .filter(pair => pair.substate !== OBLIVION_STATE)
 
-    return next.length === 0 ? oblivionState : next
+    return next.length === 0 ? OBLIVION_STATE : next
   }
 
   return crawl(alphabet, initial, isFinal, follow)
@@ -306,13 +297,13 @@ const parallel = (fsms, isFinal) => {
   sequence of symbols that is accepted by any input FSM. If
   `fsms` is empty, the output FSM is `null`.
 */
-const union = fsms =>
+export const union = fsms =>
   parallel(fsms, state => state.some(pair => pair.fsm.hasFinalState(pair.substate)))
 
 /**
   Intersection.
 */
-const intersection = fsms =>
+export const intersection = fsms =>
   parallel(fsms, state =>
     fsms.every(fsm => state.some(pair => pair.fsm === fsm && fsm.hasFinalState(pair.substate)))
   )
@@ -323,7 +314,7 @@ const intersection = fsms =>
   This is a pretty powerful procedure which could potentially go on
   forever if you supply an evil version of follow().
 */
-const crawl = (alphabet, initial, isFinal, follow) => {
+export const crawl = (alphabet, initial, isFinal, follow) => {
   const lookup = [initial]
   const finals = []
   const map = {}
@@ -341,7 +332,7 @@ const crawl = (alphabet, initial, isFinal, follow) => {
     map[state] = {}
     alphabet.forEach(symbol => {
       const next = follow(blah, symbol)
-      if (next === oblivionState) {
+      if (next === OBLIVION_STATE) {
         return
       }
 
@@ -358,7 +349,7 @@ const crawl = (alphabet, initial, isFinal, follow) => {
     state++
   }
 
-  return fsm(alphabet, Object.keys(lookup), '0', finals, map)
+  return fsm(alphabet, Object.keys(lookup), finals, map)
 }
 
 /**
@@ -366,12 +357,12 @@ const crawl = (alphabet, initial, isFinal, follow) => {
   (if it's final) the first state from the next FSM, plus (if that's
   final) the first state from the next but one FSM, plus...
 */
-const connectAll = (fsms, i, substate) => {
-  const result = [{i, substate}]
+export const _connectAll = (fsms, i, substate) => {
+  const result = [{ i, substate }]
   while (i < fsms.length - 1 && fsms[i].hasFinalState(substate)) {
     i += 1
-    substate = fsms[i].initial
-    result.push({i, substate})
+    substate = fsms[i].states[0]
+    result.push({ i, substate })
   }
   return result
 }
@@ -379,7 +370,7 @@ const connectAll = (fsms, i, substate) => {
 /**
   Concatenate arbitrarily many finite state machines together.
 */
-const concatenate = fsms => {
+export const concatenate = fsms => {
   const alphabet = unifyAlphabets(fsms.map(fsm => fsm.alphabet))
 
   fsms = [epsilon(alphabet)].concat(fsms)
@@ -387,7 +378,7 @@ const concatenate = fsms => {
   // Use a superset containing states from all FSMs at once.
   // We start at the start of the first FSM. If this state is final in the
   // first FSM, then we are also at the start of the second FSM. And so on.
-  const initial = connectAll(fsms, 0, fsms[0].initial)
+  const initial = _connectAll(fsms, 0, fsms[0].states[0])
 
   // If you're in a final state of the final FSM, it's final
   const isFinal = state => state.some(pair =>
@@ -406,7 +397,7 @@ const concatenate = fsms => {
       const i = pair.i
       const substate = pair.substate
       if (fsms[i].alphabet.includes(symbol)) {
-        connectAll(fsms, i, fsms[i].follow(substate, symbol)).forEach(nextsubstate => {
+        _connectAll(fsms, i, fsms[i].follow(substate, symbol)).forEach(nextsubstate => {
           if (!next.some(x =>
             x.i === i &&
             x.substate === nextsubstate.substate
@@ -417,9 +408,9 @@ const concatenate = fsms => {
       }
     })
 
-    next = next.filter(pair => pair.substate !== oblivionState)
+    next = next.filter(pair => pair.substate !== OBLIVION_STATE)
 
-    return next.length === 0 ? oblivionState : next
+    return next.length === 0 ? OBLIVION_STATE : next
   }
 
   return crawl(alphabet, initial, isFinal, follow)
@@ -428,9 +419,10 @@ const concatenate = fsms => {
 /**
   Given an FSM and a multiplier, return the multiplied FSM.
 */
-const multiply = (x, multiplier) =>
-  multiplier === 0 ? epsilon(x.alphabet)
-  : concatenate(Array(multiplier).fill(x))
+export const multiply = (x, multiplier) =>
+  multiplier === 0
+    ? epsilon(x.alphabet)
+    : concatenate(Array(multiplier).fill(x))
 
 // TODO: alphabet should be an object with keys, easier to iterate
 // over.
@@ -440,10 +432,10 @@ const multiply = (x, multiplier) =>
   more Xes). This is NOT as simple as naively connecting the final states
   back to the initial state: see (b*ab)* for example.
 */
-const star = fsm => {
+export const star = fsm => {
   const alphabet = fsm.alphabet
 
-  const initial = [fsm.initial]
+  const initial = [fsm.states[0]]
 
   const follow = (state, symbol) => {
     let next = []
@@ -463,10 +455,10 @@ const star = fsm => {
       }
     })
 
-    next = next.filter(substate => substate !== oblivionState)
+    next = next.filter(substate => substate !== OBLIVION_STATE)
 
     if (next.length === 0) {
-      return oblivionState
+      return OBLIVION_STATE
     }
 
     return next
@@ -476,5 +468,3 @@ const star = fsm => {
 
   return union([epsilon(alphabet), crawl(alphabet, initial, isFinal, follow)])
 }
-
-module.exports = {fsm, star, anythingElse, epsilon, nothing, concatenate, intersection, crawl, union, multiply, _connectAll: connectAll}
