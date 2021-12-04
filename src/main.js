@@ -30,36 +30,39 @@ export class Fsm {
     `map` may be sparse (i.e. it may omit transitions). In the case of
     omitted transitions, a non-final "oblivion" state is simulated.
   */
-  constructor (states, finals, map) {
+  constructor (finals, map, initial) {
     // Validation
 
-    finals.forEach(fynal => {
-      if (!states.includes(fynal)) {
-        throw Error('Final state ' + fynal + ' must be one of ' + states.join(', '))
-      }
-    })
-
+    // Gather all the states and symbols in the alphabet
     const _alphabet = []
+    const _states = [initial]
 
-    Object.keys(map).forEach(state => {
-      Reflect.ownKeys(map[state]).forEach(symbol => {
-        if (!_alphabet.includes(symbol)) {
-          _alphabet.push(symbol)
-        }
-        if (!states.includes(map[state][symbol])) {
-          throw Error('Transition for state ' + state + ' and symbol ' + symbol + ' leads to ' + map[state][symbol] + ', which is not a state')
-        }
-      })
-    })
+    let i = 0
+    while (i in _states) {
+      const state = _states[i]
+      if (state in map) {
+        Reflect.ownKeys(map[state]).forEach(symbol => {
+          if (!_alphabet.includes(symbol)) {
+            _alphabet.push(symbol)
+          }
+          if (!_states.includes(map[state][symbol])) {
+            _states.push(map[state][symbol])
+          }
+        })
+      }
+      i++
+    }
 
     this.alphabet = _alphabet
-    this.states = states
+    this.states = _states
     this.finals = finals
     this.map = map
+    this.initial = initial
 
     this._liveStates = undefined
   }
 
+  // `finals` becomes a function
   hasFinalState (state) {
     return this.finals.includes(state)
   }
@@ -90,7 +93,7 @@ export class Fsm {
     alphabet will be converted to `ANYTHING_ELSE`.
   */
   accepts (input) {
-    let state = this.states[0]
+    let state = this.initial
     for (const symbol of input) {
       state = this.follow(state, symbol)
     }
@@ -197,7 +200,7 @@ export class Fsm {
     // string.
     const strings = [{
       cstring: [],
-      cstate: this.states[0]
+      cstate: this.initial
     }]
     let i = -1
 
@@ -244,13 +247,13 @@ export class Fsm {
   demonstrates that this is possible, and is also extremely useful
   in some situations
 */
-Fsm.NOTHING = new Fsm(['A'], [], {})
+Fsm.NOTHING = new Fsm([], {}, 'A')
 
 /**
   An FSM matching an empty string, "", only.
   This is very useful in many situations
 */
-Fsm.EPSILON = new Fsm(['A'], ['A'], {})
+Fsm.EPSILON = new Fsm(['A'], {}, 'A')
 
 const unifyAlphabets = alphabets => {
   const unified = []
@@ -267,7 +270,7 @@ const unifyAlphabets = alphabets => {
 const parallel = (fsms, isFinal) => {
   const alphabet = unifyAlphabets(fsms.map(fsm => fsm.alphabet))
 
-  const initial = fsms.map(fsm => ({ fsm, substate: fsm.states[0] }))
+  const initial = fsms.map(fsm => ({ fsm, substate: fsm.initial }))
 
   // dedicated function accepts a "superset" and returns the next "superset"
   // obtained by following this transition in the new FSM
@@ -339,7 +342,7 @@ export const crawl = (alphabet, initial, isFinal, follow) => {
     state++
   }
 
-  return new Fsm(Object.keys(lookup), finals, map)
+  return new Fsm(finals, map, '0')
 }
 
 /**
@@ -351,7 +354,7 @@ export const _connectAll = (fsms, i, substate) => {
   const result = [{ i, substate }]
   while (i < fsms.length - 1 && fsms[i].hasFinalState(substate)) {
     i += 1
-    substate = fsms[i].states[0]
+    substate = fsms[i].initial
     result.push({ i, substate })
   }
   return result
@@ -363,12 +366,10 @@ export const _connectAll = (fsms, i, substate) => {
 export const concatenate = fsms => {
   const alphabet = unifyAlphabets(fsms.map(fsm => fsm.alphabet))
 
-  fsms = [Fsm.EPSILON].concat(fsms)
-
   // Use a superset containing states from all FSMs at once.
   // We start at the start of the first FSM. If this state is final in the
   // first FSM, then we are also at the start of the second FSM. And so on.
-  const initial = _connectAll(fsms, 0, fsms[0].states[0])
+  const initial = _connectAll(fsms, 0, fsms[0].initial)
 
   // If you're in a final state of the final FSM, it's final
   const isFinal = state => state.some(({ i, substate }) =>
@@ -421,7 +422,7 @@ export const multiply = (x, multiplier) =>
 export const star = fsm => {
   const alphabet = fsm.alphabet
 
-  const initial = [fsm.states[0]]
+  const initial = [fsm.initial]
 
   const follow = (state, symbol) => {
     let next = []

@@ -17,36 +17,24 @@ describe('fsm', () => {
   let b
   beforeEach(() => {
     a = new Fsm(
-      ['0', '1', 'ob'],
       ['1'],
       {
         0: { a: '1', b: 'ob' },
         1: { a: 'ob', b: 'ob' },
         ob: { a: 'ob', b: 'ob' }
-      }
+      },
+      '0'
     )
 
     b = new Fsm(
-      ['0', '1', 'ob'],
       ['1'],
       {
         0: { a: 'ob', b: '1' },
         1: { a: 'ob', b: 'ob' },
         ob: { a: 'ob', b: 'ob' }
-      }
+      },
+      '0'
     )
-  })
-
-  describe('constructor', () => {
-    describe('rejects invalid inputs', () => {
-      it('rejects if final isn\'t a state', () => {
-        assert.throws(() => new Fsm(['1'], ['2'], {}))
-      })
-
-      it('rejects invalid transition', () => {
-        assert.throws(() => new Fsm(['1'], [], { 1: { a: '2' } }))
-      })
-    })
   })
 
   describe('toString', () => {
@@ -61,11 +49,11 @@ describe('fsm', () => {
     })
 
     it('handles ANYTHING_ELSE and OBLIVION_STATE', () => {
-      assert.deepStrictEqual(new Fsm(['0', '1'], [], {
+      assert.deepStrictEqual(new Fsm([], {
         0: {
           [ANYTHING_ELSE]: '1'
         }
-      }).toString(), [
+      }, '0').toString(), [
         '   name final? @@ANYTHING_ELSE \n',
         '-------------------------------\n',
         '-> 0    false  1               \n',
@@ -90,7 +78,6 @@ describe('fsm', () => {
     it('advanced', () => {
       // This is (a|b)*a(a|b)
       const brzozowski = new Fsm(
-        ['A', 'B', 'C', 'D', 'E'],
         ['C', 'E'],
         {
           A: { a: 'B', b: 'D' },
@@ -98,7 +85,8 @@ describe('fsm', () => {
           C: { a: 'C', b: 'E' },
           D: { a: 'B', b: 'D' },
           E: { a: 'B', b: 'D' }
-        }
+        },
+        'A'
       )
       assert.deepStrictEqual(brzozowski.accepts(['a', 'a']), true)
       assert.deepStrictEqual(brzozowski.accepts(['a', 'b']), true)
@@ -117,7 +105,6 @@ describe('fsm', () => {
       // Disallows the empty string
       // Allows "0" on its own, but not leading zeroes.
       const div3 = new Fsm(
-        ['initial', 'zero', '0', '1', '2', 'oblivion'],
         ['zero', '0'],
         {
           initial: { 0: 'zero', 1: '1' },
@@ -126,7 +113,8 @@ describe('fsm', () => {
           1: { 0: '2', 1: '0' },
           2: { 0: '1', 1: '2' },
           oblivion: { 0: 'oblivion', 1: 'oblivion' }
-        }
+        },
+        'initial'
       )
       assert.deepStrictEqual(div3.accepts([]), false)
       assert.deepStrictEqual(div3.accepts(['0']), true)
@@ -158,10 +146,10 @@ describe('fsm', () => {
     it('accepts anything else', () => {
       assert.deepStrictEqual(new Fsm(
         ['1'],
-        ['1'],
         {
           1: { a: '1', b: '1', c: '1', [ANYTHING_ELSE]: '1' }
-        }
+        },
+        '1'
       ).accepts(['d']), true)
     })
 
@@ -179,14 +167,14 @@ describe('fsm', () => {
   describe('strings', () => {
     it('blockquote', () => {
       const blockquote = new Fsm(
-        ['0', '1', '2', '3', '4', '5'],
         ['4'],
         {
           0: { '/': '1' },
           1: { '*': '2' },
           2: { '/': '2', [ANYTHING_ELSE]: '2', '*': '3' },
           3: { '/': '4', [ANYTHING_ELSE]: '2', '*': '3' }
-        }
+        },
+        '0'
       )
       assert.deepStrictEqual(blockquote.accepts(['/', '*', 'whatever', '*', '/']), true)
       assert.deepStrictEqual(blockquote.accepts(['*', '*', 'whatever', '*', '/']), false)
@@ -290,8 +278,8 @@ describe('fsm', () => {
     it('unifies alphabets properly', () => {
       // Thanks to sparse maps it should now be possible to compute the union of FSMs
       // with disagreeing alphabets!
-      const a = new Fsm(['0', '1'], ['1'], { 0: { a: '1' } })
-      const b = new Fsm(['0', '1'], ['1'], { 0: { b: '1' } })
+      const a = new Fsm(['1'], { 0: { a: '1' } }, '0')
+      const b = new Fsm(['1'], { 0: { b: '1' } }, '0')
       assert.deepStrictEqual(concatenate([a, b]).accepts(['a', 'b']), true)
     })
 
@@ -307,22 +295,22 @@ describe('fsm', () => {
       let int5B
       beforeEach(() => {
         int5A = new Fsm(
-          ['1', '0'],
           ['1'],
           {
             0: { [ANYTHING_ELSE]: '0', a: '0', b: '0', c: '0' },
             1: { [ANYTHING_ELSE]: '0', a: '0', b: '1', c: '1' }
-          }
+          },
+          '1'
         )
 
         int5B = new Fsm(
-          ['1', '0', '2'],
           ['0'],
           {
             0: { [ANYTHING_ELSE]: '2', a: '2', b: '2', c: '2' },
             1: { [ANYTHING_ELSE]: '2', a: '2', b: '2', c: '0' },
             2: { [ANYTHING_ELSE]: '2', a: '2', b: '2', c: '2' }
-          }
+          },
+          '1'
         )
       })
 
@@ -342,13 +330,13 @@ describe('fsm', () => {
 
     it('should not create new oblivion states', () => {
       const abc = new Fsm(
-        ['0', '1', '2', '3'],
         ['3'],
         {
           0: { a: '1' },
           1: { b: '2' },
           2: { c: '3' }
-        }
+        },
+        '0'
       )
       assert.deepStrictEqual(abc.states.length, 4)
       assert.deepStrictEqual(concatenate([abc, abc]).states.length, 7)
@@ -387,21 +375,21 @@ describe('fsm', () => {
     it('unifies alphabets properly', () => {
       // Thanks to sparse maps it should now be possible to compute the union of FSMs
       // with disagreeing alphabets!
-      const a = new Fsm(['0', '1'], ['1'], { 0: { a: '1' } })
-      const b = new Fsm(['0', '1'], ['1'], { 0: { b: '1' } })
+      const a = new Fsm(['1'], { 0: { a: '1' } }, '0')
+      const b = new Fsm(['1'], { 0: { b: '1' } }, '0')
       assert.deepStrictEqual(union([a, b]).accepts(['a']), true)
       assert.deepStrictEqual(union([a, b]).accepts(['b']), true)
     })
 
     it('should not create new oblivion states', () => {
       const abc = new Fsm(
-        ['0', '1', '2', '3'],
         ['3'],
         {
           0: { a: '1' },
           1: { b: '2' },
           2: { c: '3' }
-        }
+        },
+        '0'
       )
       assert.deepStrictEqual(union([abc, abc]).states.length, 4)
     })
@@ -428,7 +416,6 @@ describe('fsm', () => {
 
     it('strange bug', () => {
       const abcdotdotdot = new Fsm(
-        ['0', '1', '2', '3', '4', '5', '6'],
         ['6'],
         {
           0: { a: '1' },
@@ -438,11 +425,11 @@ describe('fsm', () => {
           4: { a: '5', b: '5', c: '5', d: '5', e: '5', f: '5', [ANYTHING_ELSE]: '5' },
           5: { a: '6', b: '6', c: '6', d: '6', e: '6', f: '6', [ANYTHING_ELSE]: '6' },
           6: {}
-        }
+        },
+        '0'
       )
 
       const dotdotdotdef = new Fsm(
-        ['0', '1', '2', '3', '4', '5', '6'],
         ['6'],
         {
           0: { a: '1', b: '1', c: '1', d: '1', e: '1', f: '1', [ANYTHING_ELSE]: '1' },
@@ -452,7 +439,8 @@ describe('fsm', () => {
           4: { e: '5' },
           5: { f: '6' },
           6: {}
-        }
+        },
+        '0'
       )
       const abcdef = intersection([abcdotdotdot, dotdotdotdef])
       assert.deepStrictEqual(abcdef.accepts(['b', 'b', 'c', 'd', 'e', 'f']), false)
@@ -461,7 +449,6 @@ describe('fsm', () => {
     it('stranger bug minus 1', () => {
       // /[01][01]00-00-00/ and /00.*/
       const yyyymmdd = new Fsm(
-        ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
         ['10'],
         {
           0: { 0: '1', 1: '1' },
@@ -475,18 +462,19 @@ describe('fsm', () => {
           8: { 0: '9' },
           9: { 0: '10' },
           10: {}
-        }
+        },
+        '0'
       )
 
       const nineteen = new Fsm(
-        ['0', '1', '2', '3'],
         ['2', '3'],
         {
           0: { 0: '1' },
           1: { 0: '2' },
           2: { 0: '3', 1: '3', '-': '3' },
           3: { 0: '3', 1: '3', '-': '3' }
-        }
+        },
+        '0'
       )
 
       assert.deepStrictEqual(intersection([yyyymmdd, nineteen]).accepts(['0', '0', '0', '0', '-', '0', '0', '-', '0', '0']), true)
@@ -495,7 +483,6 @@ describe('fsm', () => {
     it('stranger bug', () => {
       // /\d\d\d\d-\d\d-\d\d/ and /19.*/
       const yyyymmdd = new Fsm(
-        ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
         ['10'],
         {
           0: { 0: '1', 1: '1', 2: '1', 3: '1', 4: '1', 5: '1', 6: '1', 7: '1', 8: '1', 9: '1' },
@@ -509,18 +496,19 @@ describe('fsm', () => {
           8: { 0: '9', 1: '9', 2: '9', 3: '9', 4: '9', 5: '9', 6: '9', 7: '9', 8: '9', 9: '9' },
           9: { 0: '10', 1: '10', 2: '10', 3: '10', 4: '10', 5: '10', 6: '10', 7: '10', 8: '10', 9: '10' },
           10: {}
-        }
+        },
+        '0'
       )
 
       const nineteen = new Fsm(
-        ['0', '1', '2', '3'],
         ['2', '3'],
         {
           0: { 1: '1' },
           1: { 9: '2' },
           2: { 0: '3', 1: '3', 2: '3', 3: '3', 4: '3', 5: '3', 6: '3', 7: '3', 8: '3', 9: '3', '-': '3' },
           3: { 0: '3', 1: '3', 2: '3', 3: '3', 4: '3', 5: '3', 6: '3', 7: '3', 8: '3', 9: '3', '-': '3' }
-        }
+        },
+        '0'
       )
 
       assert.deepStrictEqual(intersection([yyyymmdd, nineteen]).accepts(['1', '9', '9', '-', '9', '9', '-', '9', '9']), false)
@@ -531,11 +519,11 @@ describe('fsm', () => {
   describe('ANYTHING_ELSE', () => {
     it('works', () => {
       const any = new Fsm(
-        ['0', '1'],
         ['1'],
         {
           0: { [ANYTHING_ELSE]: '1' }
-        }
+        },
+        '0'
       )
       assert.deepStrictEqual(any.accepts([]), false)
       assert.deepStrictEqual(any.accepts(['a']), true)
@@ -559,12 +547,12 @@ describe('fsm', () => {
     it('bug 28', () => {
       // This is ab*
       const abstar = new Fsm(
-        ['0', '1'],
         ['1'],
         {
           0: { a: '1' },
           1: { b: '1' }
-        }
+        },
+        '0'
       )
       assert.deepStrictEqual(abstar.accepts(['a']), true)
       assert.deepStrictEqual(abstar.accepts(['b']), false)
@@ -583,14 +571,14 @@ describe('fsm', () => {
       // This is (a*ba)*. Naively connecting the final states to the initial state
       // gives the incorrect result here.
       const starred = star(new Fsm(
-        ['0', '1', '2', 'oblivion'],
         ['2'],
         {
           0: { a: '0', b: '1' },
           1: { a: '2', b: 'oblivion' },
           2: { a: 'oblivion', b: 'oblivion' },
           oblivion: { a: 'oblivion', b: 'oblivion' }
-        }
+        },
+        '0'
       ))
       assert.deepStrictEqual(starred.alphabet, ['a', 'b'])
       assert.deepStrictEqual(starred.accepts([]), true)
@@ -606,13 +594,13 @@ describe('fsm', () => {
 
     it('should not create new oblivion states', () => {
       const abc = new Fsm(
-        ['0', '1', '2', '3'],
         ['3'],
         {
           0: { a: '1' },
           1: { b: '2' },
           2: { c: '3' }
-        }
+        },
+        '0'
       )
       assert.deepStrictEqual(star(abc).states.length, 4)
     })
@@ -679,13 +667,13 @@ describe('fsm', () => {
 
     it('should not create new oblivion states', () => {
       const abc = new Fsm(
-        ['0', '1', '2', '3'],
         ['3'],
         {
           0: { a: '1' },
           1: { b: '2' },
           2: { c: '3' }
-        }
+        },
+        '0'
       )
       assert.deepStrictEqual(multiply(abc, 3).states.length, 10)
     })
